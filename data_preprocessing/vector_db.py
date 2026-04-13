@@ -2,6 +2,7 @@ import uuid
 from typing import List, Optional
 from dotenv import load_dotenv
 from langchain_qdrant import QdrantVectorStore
+import os
 from langchain_core.documents import Document
 
 from qdrant_client import QdrantClient
