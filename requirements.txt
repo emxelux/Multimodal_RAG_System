@@ -14,7 +14,7 @@ groq
 pdfplumber
 pypdf
 pydantic
-nump
+numpy
 pandas
 
 # API & Web
