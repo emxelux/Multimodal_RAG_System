@@ -18,15 +18,13 @@ pydantic
 numpy
 puremagic
 pandas
-
+python-multipart
 # API & Web
 fastapi
 uvicorn
 httpx
-psycopg2
+psycopg2-binary
 sqlalchemy
-uuid
-dotenv
 
 # Utilities
 python-dotenv
