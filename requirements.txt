@@ -12,6 +12,7 @@ groq
 
 # Data processing
 pdfplumber
+pymupdf
 pypdf
 pydantic
 numpy
