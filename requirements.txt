@@ -15,6 +15,7 @@ pdfplumber
 pypdf
 pydantic
 numpy
+puremagic
 pandas
 
 # API & Web
