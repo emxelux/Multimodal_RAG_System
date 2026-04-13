@@ -19,7 +19,7 @@ from data_preprocessing.embedding import (
     sparse_embeddings,
 )
 
-loadenv()
+load_dotenv()
 
 qdrant_api_key = os.getenv("QDRANT_API_KEY")
 class VectorDB:
