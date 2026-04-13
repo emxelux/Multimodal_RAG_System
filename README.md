@@ -1,3 +1,13 @@
+---
+title: ChatPDF
+emoji: 🐳
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
+
 <<<<<<< HEAD
 <div align="center">
 
