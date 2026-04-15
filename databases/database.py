@@ -22,7 +22,8 @@ class Document(Base):
 
 class Database:
     def __init__(self, db_url=db_url):
-        self.engine = create_engine(db_url)
+        self.engine = create_engine(db_url,pool_pre_ping=True,
+pool_recycle=300, pool_size = 5, max_overflow = 10)
         Base.metadata.create_all(self.engine)
 
     @staticmethod
