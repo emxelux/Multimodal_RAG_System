@@ -10,6 +10,7 @@ load_dotenv()
 Base = declarative_base()
 db_url = os.getenv("DATABASE_URL")
 full_path = "document_files"
+
 class Document(Base):
     __tablename__ = 'documents'
 
