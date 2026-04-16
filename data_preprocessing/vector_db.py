@@ -27,8 +27,8 @@ class VectorDB:
         self.sparse_embeddings = sparse_embeddings
 
         self.client = QdrantClient(
-            path = "../my_qdrant_collection" #"https://bd1dcb05-82dd-48c8-a843-290ece2e38b3.us-west-2-0.aws.cloud.qdrant.io",
-            # api_key=os.getenv("QDRANT_API_KEY"),
+            url = "https://bd1dcb05-82dd-48c8-a843-290ece2e38b3.us-west-2-0.aws.cloud.qdrant.io",
+            api_key=os.getenv("QDRANT_API_KEY"),
         )
 
         self._ensure_collection()

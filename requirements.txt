@@ -12,6 +12,7 @@ groq
 
 # Data processing
 pdfplumber
+langchain-huggingface
 pymupdf
 pypdf
 pydantic
