@@ -15,6 +15,7 @@ pdfplumber
 pymupdf
 pypdf
 pydantic
+pymupdf4llm
 numpy
 puremagic
 pandas
