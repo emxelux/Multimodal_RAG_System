@@ -2,7 +2,7 @@ import shutil
 import uuid
 from pathlib import Path
 from typing import Optional
-
+from api.models import AskRequest, AskResponse
 from fastapi import FastAPI, HTTPException, UploadFile, File, status
 from pydantic import BaseModel
 
