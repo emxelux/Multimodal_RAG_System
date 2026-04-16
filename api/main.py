@@ -1,15 +1,3 @@
-"""
-api/main.py — FastAPI entry point.
-
-Endpoints:
-  GET  /                      health check
-  POST /upload/               ingest a PDF
-  GET  /documents/            list all ingested documents
-  GET  /documents/{doc_id}    get a single document record
-  DELETE /documents/{doc_id}  remove a document record
-  POST /ask/                  ask a question (with optional conversation history)
-"""
-
 import shutil
 import uuid
 from pathlib import Path
@@ -29,31 +17,14 @@ app = FastAPI(title="ChatPDF API")
 
 DATA_DIR.mkdir(exist_ok=True)
 
-# Shared singletons (initialised once at startup)
+
 my_client = VectorDB()
 llm = LLM()
 db = Database()
 
 
-# ---------------------------------------------------------------------------
-# Request / Response schemas
-# ---------------------------------------------------------------------------
-
-class AskRequest(BaseModel):
-    question: str
-    source: Optional[str] = None          # filter results to a specific PDF
-    conversation_id: Optional[str] = None  # pass to enable history
 
 
-class AskResponse(BaseModel):
-    answer: str
-    conversation_id: str
-    sources: list
-
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 
 @app.get("/")
 def homepage():
@@ -120,10 +91,10 @@ def ask_question(body: AskRequest):
     """
     conv_id = body.conversation_id or str(uuid.uuid4())
 
-    # Retrieve conversation history (last 20 messages)
+    
     history = db.get_conversation(conv_id)
 
-    # Hybrid vector search
+    
     context = my_client.search(
         query=body.question,
         top_k=5,
@@ -136,14 +107,12 @@ def ask_question(body: AskRequest):
             detail="No relevant context found. Make sure a document has been uploaded.",
         )
 
-    # Generate answer
     answer = llm.generate_response(
         query=body.question,
         context=context,
         history=history,
     )
 
-    # Persist this turn
     db.add_message(conv_id, role="user", content=body.question)
     db.add_message(conv_id, role="assistant", content=answer)
 
