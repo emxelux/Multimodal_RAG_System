@@ -33,7 +33,6 @@ def homepage():
 
 @app.post("/upload/", status_code=status.HTTP_201_CREATED)
 async def upload_file(file: UploadFile = File(...)):
-    """Accept a PDF, ingest it into the vector store, and record it in the DB."""
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -64,7 +63,6 @@ async def upload_file(file: UploadFile = File(...)):
 
 @app.get("/documents/")
 def list_documents():
-    """Return all documents that have been ingested."""
     return db.list_documents()
 
 
@@ -85,34 +83,23 @@ def delete_document(doc_id: int):
 
 @app.post("/ask/", response_model=AskResponse)
 def ask_question(body: AskRequest):
-    """
-    Answer a question using RAG.
-    Pass conversation_id on follow-up turns to include prior context.
-    """
     conv_id = body.conversation_id or str(uuid.uuid4())
-
-    
     history = db.get_conversation(conv_id)
-
-    
     context = my_client.search(
         query=body.question,
         top_k=5,
         source=body.source,
     )
-
     if not context:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No relevant context found. Make sure a document has been uploaded.",
         )
-
     answer = llm.generate_response(
         query=body.question,
         context=context,
         history=history,
     )
-
     db.add_message(conv_id, role="user", content=body.question)
     db.add_message(conv_id, role="assistant", content=answer)
 
