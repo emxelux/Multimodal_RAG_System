@@ -1,5 +1,5 @@
 from langchain_qdrant import FastEmbedSparse
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 
 

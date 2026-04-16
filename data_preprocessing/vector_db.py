@@ -22,13 +22,13 @@ load_dotenv()
 
 class VectorDB:
     def __init__(self):
-        self.collection_name = "chatpdf_knowledge"
+        self.collection_name = "chatpdf_knowledge2"
         self.embeddings = dense_embeddings
         self.sparse_embeddings = sparse_embeddings
 
         self.client = QdrantClient(
-            url="https://bd1dcb05-82dd-48c8-a843-290ece2e38b3.us-west-2-0.aws.cloud.qdrant.io",
-            api_key=os.getenv("QDRANT_API_KEY"),
+            path = "../my_qdrant_collection" #"https://bd1dcb05-82dd-48c8-a843-290ece2e38b3.us-west-2-0.aws.cloud.qdrant.io",
+            # api_key=os.getenv("QDRANT_API_KEY"),
         )
 
         self._ensure_collection()
