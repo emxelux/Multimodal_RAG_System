@@ -1,37 +1,35 @@
 """
 chunking.py — Parent-child semantic chunking.
 
-Each PDF page becomes one "parent" (stored in a dict for full-context retrieval).
-The page text is further split by SemanticChunker into smaller "child" chunks
-that are embedded and stored in Qdrant.  Each child carries a parent_id so the
-retriever can later fetch the richer parent text instead of just the snippet.
+Each PDF page becomes one "parent" (full text stored in a dict for later retrieval).
+The page is further split by SemanticChunker into smaller "child" chunks that are
+embedded and stored in Qdrant. Each child carries a parent_id reference.
 """
 
 import uuid
 from langchain_core.documents import Document
 from langchain_experimental.text_splitter import SemanticChunker
+from data_preprocessing.embedding import get_dense_embeddings
 
 
-def chunk_pdf(pages: list, embeddings_model) -> tuple:
+def chunk_pdf(pages: list, embeddings_model=None) -> tuple:
     """
-    Split a list of page dicts (from ingest.load_pdf) into child chunks.
+    Split page dicts (from ingest.load_pdf) into child chunks.
 
     Args:
         pages:            output of ingest.load_pdf()
-        embeddings_model: a LangChain Embeddings object (used by SemanticChunker)
+        embeddings_model: optional override; defaults to get_dense_embeddings()
 
     Returns:
         (child_chunks, parent_docs)
-        child_chunks  — list[Document]  small, embeddable chunks
-        parent_docs   — dict {parent_id: page_text}  full page text keyed by UUID
+        child_chunks — list[Document]
+        parent_docs  — dict {parent_id: page_text}
     """
-    splitter = SemanticChunker(
-        embeddings_model,
-        breakpoint_threshold_type="percentile",
-    )
+    model = embeddings_model or get_dense_embeddings()
+    splitter = SemanticChunker(model, breakpoint_threshold_type="percentile")
 
-    child_chunks: list[Document] = []
-    parent_docs: dict[str, str] = {}
+    child_chunks: list = []
+    parent_docs: dict = {}
 
     for page in pages:
         page_text = page.get("text", "").strip()
@@ -41,9 +39,7 @@ def chunk_pdf(pages: list, embeddings_model) -> tuple:
         parent_id = str(uuid.uuid4())
         parent_docs[parent_id] = page_text
 
-        sub_texts = splitter.split_text(page_text)
-
-        for text in sub_texts:
+        for text in splitter.split_text(page_text):
             if not text.strip():
                 continue
             child_chunks.append(

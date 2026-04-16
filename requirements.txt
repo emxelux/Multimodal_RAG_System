@@ -1,34 +1,41 @@
+# LangChain ecosystem
 langchain
 langchain-core
 langchain-community
 langchain-qdrant
-langchain-huggingface
 langchain-experimental
+
+# Vector DB
 qdrant-client
 fastembed
+
+# Embeddings
 sentence-transformers
+huggingface-hub
 
 # LLM providers
 openai
 groq
 
-# Data processing
+# PDF processing
 pdfplumber
 pymupdf
 pypdf
-pydantic
 pymupdf4llm
-numpy
 puremagic
+
+# Data / utilities
+numpy
 pandas
+pydantic
 python-multipart
-# API & Web
+python-dotenv
+
+# API & web
 fastapi
-uvicorn
+uvicorn[standard]
 httpx
+
+# Database
 psycopg2-binary
 sqlalchemy
-
-# Utilities
-python-dotenv
-huggingface-hub

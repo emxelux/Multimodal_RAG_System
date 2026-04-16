@@ -1,3 +1,7 @@
+"""
+llm_connection.py — Groq LLM wrapper with conversation history support.
+"""
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -25,10 +29,19 @@ class LLM:
         history: list = None,
         system_prompt: str = _system_prompt,
     ) -> str:
+        """
+        Args:
+            query:         the user's question
+            context:       list of chunk dicts from VectorDB.search()
+            history:       list of {"role": ..., "content": ...} for prior turns
+            system_prompt: override the default system prompt
+        """
+        # Build context block from retrieved chunks
         context_text = "\n\n---\n\n".join(
             f"[Page {c.get('page', '?')}] {c['content']}" for c in context
         )
 
+        # Assemble messages: system → history → new user turn
         messages = [{"role": "system", "content": system_prompt}]
 
         if history:

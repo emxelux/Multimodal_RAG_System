@@ -1,7 +1,20 @@
+"""
+vector_db.py — Qdrant hybrid (dense + sparse) vector store wrapper.
+
+Uses:
+  - Dense  : BAAI/bge-small-en-v1.5  (HuggingFaceEmbeddings)
+  - Sparse : Qdrant/bm25              (FastEmbedSparse)
+  - Mode   : HYBRID                   (RRF fusion)
+
+langchain_qdrant requires the sparse vector field to be named "langchain-sparse"
+exactly. The collection is validated on startup and recreated if the schema
+is wrong (e.g. created by an older version of this code).
+"""
+
 import uuid
+import os
 from typing import List, Optional
 from dotenv import load_dotenv
-import os
 
 from langchain_qdrant import QdrantVectorStore, RetrievalMode
 from langchain_core.documents import Document
@@ -15,10 +28,9 @@ from qdrant_client.models import (
     MatchValue,
 )
 
-from data_preprocessing.embedding import dense_embeddings, sparse_embeddings
+from data_preprocessing.embedding import get_dense_embeddings, get_sparse_embeddings
 
 load_dotenv()
-
 
 SPARSE_VECTOR_NAME = "langchain-sparse"
 
@@ -26,26 +38,27 @@ SPARSE_VECTOR_NAME = "langchain-sparse"
 class VectorDB:
     def __init__(self):
         self.collection_name = "chatpdf_knowledge"
-        self.embeddings = dense_embeddings
-        self.sparse_embeddings = sparse_embeddings
 
         self.client = QdrantClient(
             url="https://bd1dcb05-82dd-48c8-a843-290ece2e38b3.us-west-2-0.aws.cloud.qdrant.io",
             api_key=os.getenv("QDRANT_API_KEY"),
         )
 
+        # Models are loaded lazily here (first call triggers download)
         self._ensure_collection()
 
         self.vectorstore = QdrantVectorStore(
             client=self.client,
             collection_name=self.collection_name,
-            embedding=self.embeddings,
-            sparse_embedding=self.sparse_embeddings,
+            embedding=get_dense_embeddings(),
+            sparse_embedding=get_sparse_embeddings(),
             sparse_vector_name=SPARSE_VECTOR_NAME,
             retrieval_mode=RetrievalMode.HYBRID,
         )
 
-   
+    # ------------------------------------------------------------------
+    # collection management
+    # ------------------------------------------------------------------
 
     def _ensure_collection(self):
         existing = [c.name for c in self.client.get_collections().collections]
@@ -55,24 +68,30 @@ class VectorDB:
             sparse_names = list((info.config.params.sparse_vectors or {}).keys())
             if SPARSE_VECTOR_NAME not in sparse_names:
                 print(
-                    f"⚠️  Collection '{self.collection_name}' exists but lacks "
-                    f"sparse vector '{SPARSE_VECTOR_NAME}'. Recreating..."
+                    f"⚠️  Collection '{self.collection_name}' missing sparse field "
+                    f"'{SPARSE_VECTOR_NAME}' — recreating."
                 )
                 self.client.delete_collection(self.collection_name)
             else:
-                return  "everywhere is good "
+                return
 
-        vector_size = len(self.embeddings.embed_query("test"))
+        vector_size = len(get_dense_embeddings().embed_query("test"))
         self.client.create_collection(
             collection_name=self.collection_name,
             vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
             sparse_vectors_config={SPARSE_VECTOR_NAME: SparseVectorParams()},
         )
-        print(f"✅ Collection '{self.collection_name}' created (size={vector_size})")
+        print(f"✅ Collection '{self.collection_name}' created (dim={vector_size})")
 
-  
+    # ------------------------------------------------------------------
+    # indexing
+    # ------------------------------------------------------------------
+
     def build_index(self, documents: List[Document], source_name: str) -> str:
-      
+        if not documents:
+            print(f"⚠️  No chunks to index for: {source_name}")
+            return ""
+
         self._ensure_collection()
         document_id = str(uuid.uuid4())
 
@@ -81,7 +100,12 @@ class VectorDB:
             doc.metadata["document_id"] = document_id
 
         self.vectorstore.add_documents(documents=documents)
-    
+        print(f"✅ Indexed {len(documents)} chunks from: {source_name}")
+        return document_id
+
+    # ------------------------------------------------------------------
+    # retrieval
+    # ------------------------------------------------------------------
 
     def search(
         self,
@@ -89,7 +113,6 @@ class VectorDB:
         top_k: int = 5,
         source: Optional[str] = None,
     ) -> List[dict]:
-       
         search_kwargs: dict = {"k": top_k}
 
         if source:
@@ -105,6 +128,9 @@ class VectorDB:
         results = self.vectorstore.similarity_search(query=query, **search_kwargs)
         return self._format_results(results)
 
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
 
     def _format_results(self, docs: List[Document]) -> List[dict]:
         return [

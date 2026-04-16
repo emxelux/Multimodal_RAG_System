@@ -1,3 +1,12 @@
+"""
+ingest.py — PDF loading with text, image, and table support.
+
+Strategy:
+  - pymupdf4llm  → converts each page to Markdown (preserves headings, bold,
+                    inline images written to disk)
+  - pdfplumber   → extracts structured tables per page, appended as Markdown tables
+"""
+
 from pathlib import Path
 import pymupdf4llm
 import pdfplumber
@@ -8,7 +17,12 @@ ASSETS_DIR = ROOT_DIR / "assets"
 ASSETS_DIR.mkdir(exist_ok=True)
 
 
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
 def _table_to_markdown(table: list) -> str:
+    """Convert a pdfplumber table (list-of-lists) to a Markdown table string."""
     if not table or not table[0]:
         return ""
     rows = [[str(cell) if cell is not None else "" for cell in row] for row in table]
@@ -27,6 +41,7 @@ def _table_to_markdown(table: list) -> str:
 
 
 def _extract_tables(pdf_path: str) -> dict:
+    """Return {1-based page number: markdown table string} for pages that have tables."""
     table_map = {}
     with pdfplumber.open(pdf_path) as pdf:
         for page_num, page in enumerate(pdf.pages, start=1):
@@ -40,8 +55,23 @@ def _extract_tables(pdf_path: str) -> dict:
     return table_map
 
 
+# ---------------------------------------------------------------------------
+# public API
+# ---------------------------------------------------------------------------
+
 def load_pdf(file_path: str) -> list:
+    """
+    Load a PDF and return a list of page dicts, each containing:
+        text      — Markdown text for the page (includes serialised tables)
+        metadata  — dict: file_path, page_number, has_images, has_tables
+        images    — list of image file paths written to assets/ (may be empty)
+
+    Args:
+        file_path: filename relative to DATA_DIR, e.g. "report.pdf"
+    """
     full_path = str(DATA_DIR / file_path)
+
+    # pymupdf4llm → Markdown per page, images saved to ASSETS_DIR
     pages_md = pymupdf4llm.to_markdown(
         full_path,
         page_chunks=True,
@@ -49,11 +79,13 @@ def load_pdf(file_path: str) -> list:
         image_path=str(ASSETS_DIR),
     )
 
+    # pdfplumber → tables per page
     table_map = _extract_tables(full_path)
 
     result = []
     for page in pages_md:
         meta = page.get("metadata", {})
+        # pymupdf4llm page numbering varies by version — normalise to 1-based
         page_num = meta.get("page_number") or (meta.get("page", 0) + 1)
 
         text = page.get("text", "")

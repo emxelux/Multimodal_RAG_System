@@ -1,32 +1,30 @@
 FROM python:3.11-slim
 
-# 1. Set the working directory
 WORKDIR /app
 
-# 2. Create a non-root user (Hugging Face standard)
+# Create non-root user (HuggingFace Spaces requirement)
 RUN useradd -m -u 1000 user
 
-# 3. Copy your project files into the container
-# We do this as the root user first so we can set permissions
-COPY . /app
-
-# 4. FIX PERMISSIONS: Give the 'user' ownership of the /app folder
-# This allows the app to create 'document_files' and other folders
-RUN chown -R user:user /app && chmod -R 777 /app
-
-# 5. Switch to the non-root user
-USER user
-
-# 6. Set up the Python path and environment
-ENV PYTHONPATH=/app
-ENV PATH="/home/user/.local/bin:${PATH}"
-
-# 7. Install dependencies as the 'user'
+# Install deps first (separate layer — only rebuilds when requirements.txt changes)
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# 8. Expose the port Hugging Face expects
+# Copy application code
+COPY --chown=user:user . /app
+
+# Ensure writable runtime directories
+RUN mkdir -p /app/document_files /app/assets && \
+    chown -R user:user /app/document_files /app/assets
+
+USER user
+
+ENV PYTHONPATH=/app
+ENV PATH="/home/user/.local/bin:${PATH}"
+# Tell HuggingFace where to cache models (writable location)
+ENV HF_HOME=/app/.cache/huggingface
+ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
+
 EXPOSE 7860
 
-# 9. Start the application
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860"]

@@ -1,0 +1,19 @@
+# Never bake secrets into the image
+.env
+
+# Python cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+
+# Local qdrant storage
+CHATPDF/
+my_storage/
+qdrant_storage/
+assets/
+
+# Dev artifacts
+.git/
+.vscode/
+.ipynb_checkpoints/
+*.zip
