@@ -64,7 +64,7 @@ async def upload_file(file: UploadFile = File(...)):
 @app.get("/documents/")
 def list_documents():
     return db.list_documents()
-
+clear
 
 @app.get("/documents/{doc_id}")
 def get_document(doc_id: int):
