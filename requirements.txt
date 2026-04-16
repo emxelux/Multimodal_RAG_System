@@ -2,6 +2,8 @@ langchain
 langchain-core
 langchain-community
 langchain-qdrant
+langchain-huggingface
+langchain-experimental
 qdrant-client
 fastembed
 sentence-transformers
@@ -12,7 +14,6 @@ groq
 
 # Data processing
 pdfplumber
-langchain-huggingface
 pymupdf
 pypdf
 pydantic
