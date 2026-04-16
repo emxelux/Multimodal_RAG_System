@@ -39,6 +39,7 @@ class VectorDB:
             embedding=self.embeddings,
             sparse_embedding=self.sparse_embeddings,
             retrieval_mode=RetrievalMode.HYBRID,
+            force_recreate=True,
         )
 
 
