@@ -7,4 +7,5 @@ Rules:
 - Give a direct, clear answer. Do not restate the question.
 - If the context contains a table relevant to the question, reference it clearly.
 - If the context mentions images (figures/charts), note that visual content was present on that page.
-- Keep your answer concise but complete.
+- Keep your answer (from the provided context) Like a real person and it must be complete.
+- There check the context very well, there might be conversation history. It will help you answer better
