@@ -1,5 +1,13 @@
 """
 api/main.py — FastAPI entry point.
+
+Endpoints:
+  GET    /                    health check
+  POST   /upload/             ingest a PDF
+  GET    /documents/          list all ingested documents
+  GET    /documents/{doc_id}  get a single document record
+  DELETE /documents/{doc_id}  remove a document record
+  POST   /ask/                ask a question (with optional conversation history)
 """
 
 import shutil
@@ -9,10 +17,14 @@ from pathlib import Path
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query, status
+from fastapi import FastAPI, HTTPException, UploadFile, File, status
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Lazy singleton state — populated in lifespan, not at import time
+# ---------------------------------------------------------------------------
 
 _state: dict = {}
 
@@ -38,33 +50,41 @@ def get_db():
     return db
 
 
+# ---------------------------------------------------------------------------
+# Lifespan: initialise singletons AFTER uvicorn is up, not at import time
+# ---------------------------------------------------------------------------
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Start-up: load models and connect to services. Shut-down: nothing to do."""
     from databases.database import Database
     from data_preprocessing.vector_db import VectorDB
     from llm.llm_connection import LLM
 
-    logger.info("Starting up...")
+    logger.info("🚀 Starting up — loading models and connecting to services...")
 
     try:
         _state["db"] = Database()
-        logger.info("PostgreSQL connected")
+        logger.info("✅ PostgreSQL connected")
     except Exception as e:
-        logger.error(f"Database init failed: {e}")
+        logger.error(f"❌ Database init failed: {e}")
+        # App still starts — DB endpoints will 503 but /upload and /ask won't crash
 
     try:
         _state["vector_db"] = VectorDB()
-        logger.info("Qdrant connected")
+        logger.info("✅ Qdrant connected")
     except Exception as e:
-        logger.error(f"VectorDB init failed: {e}")
+        logger.error(f"❌ VectorDB init failed: {e}")
 
     try:
         _state["llm"] = LLM()
-        logger.info("LLM ready")
+        logger.info("✅ LLM ready")
     except Exception as e:
-        logger.error(f"LLM init failed: {e}")
+        logger.error(f"❌ LLM init failed: {e}")
 
-    yield
+    yield  # app is now serving requests
+
+    logger.info("👋 Shutting down")
     _state.clear()
 
 
@@ -81,8 +101,8 @@ DATA_DIR.mkdir(exist_ok=True)
 
 class AskRequest(BaseModel):
     question: str
-    source: Optional[str] = None
-    conversation_id: Optional[str] = None
+    source: Optional[str] = None           # filter results to a specific PDF
+    conversation_id: Optional[str] = None  # enables multi-turn history
 
 
 class AskResponse(BaseModel):
@@ -102,6 +122,7 @@ def homepage():
 
 @app.post("/upload/", status_code=status.HTTP_201_CREATED)
 async def upload_file(file: UploadFile = File(...)):
+    """Accept a PDF, ingest it into the vector store, and record it in the DB."""
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -122,7 +143,7 @@ async def upload_file(file: UploadFile = File(...)):
         if not child_chunks:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="PDF contained no extractable text.",
+                detail="PDF contained no extractable text. Check if it is image-only.",
             )
 
         get_vector_db().build_index(child_chunks, source_name=file.filename)
@@ -132,7 +153,10 @@ async def upload_file(file: UploadFile = File(...)):
         raise
     except Exception as exc:
         logger.exception("Upload failed")
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
 
     return {
         "file": file.filename,
@@ -161,44 +185,32 @@ def delete_document(doc_id: int):
 
 
 @app.post("/ask/", response_model=AskResponse)
-def ask_question(
-    question: Optional[str] = Query(default=None),
-    body: Optional[AskRequest] = None,
-):
-
-    # Resolve question and optional fields from whichever source provided them
-    resolved_question = (body.question if body else None) or question
-    source = (body.source if body else None)
-    conv_id = (body.conversation_id if body else None) or str(uuid.uuid4())
-
-    if not resolved_question:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="'question' is required — pass as query param or JSON body field.",
-        )
-
+def ask_question(body: AskRequest):
+    """Answer a question using hybrid RAG with optional conversation history."""
+    conv_id = body.conversation_id or str(uuid.uuid4())
     history = get_db().get_conversation(conv_id)
 
     context = get_vector_db().search(
-        query=resolved_question,
+        query=body.question,
         top_k=5,
-        source=source,
+        source=body.source,
     )
 
     if not context:
+        # Return a graceful answer rather than a hard 404
         return AskResponse(
             answer="The answer to your question is not found in the uploaded document.",
             conversation_id=conv_id,
-            sources=[],
+            sources=[],s
         )
 
     answer = get_llm().generate_response(
-        query=resolved_question,
+        query=body.question
         context=context,
         history=history,
     )
 
-    get_db().add_message(conv_id, role="user", content=resolved_question)
+    get_db().add_message(conv_id, role="user", content=body.question)
     get_db().add_message(conv_id, role="assistant", content=answer)
 
     return AskResponse(
