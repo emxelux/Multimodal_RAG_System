@@ -14,7 +14,9 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 @lru_cache(maxsize=1)
 def get_dense_embeddings() -> HuggingFaceEmbeddings:
     """Return the shared dense embedding model (downloaded once, cached forever)."""
-    return HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+    return HuggingFaceEmbeddings(
+        model_name="BAAI/bge-small-en-v1.5",
+        cache_folder="/tmp/huggingface_cache")
 
 
 @lru_cache(maxsize=1)
