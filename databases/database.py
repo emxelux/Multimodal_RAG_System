@@ -22,9 +22,7 @@ Base = declarative_base()
 DOCUMENT_DIR = Path(__file__).resolve().parents[1] / "document_files"
 
 
-# ---------------------------------------------------------------------------
-# ORM models
-# ---------------------------------------------------------------------------
+
 
 class Document(Base):
     __tablename__ = "documents"
@@ -51,9 +49,7 @@ class Message(Base):
         return f"<Message(conv={self.conversation_id}, role={self.role})>"
 
 
-# ---------------------------------------------------------------------------
-# Database helper
-# ---------------------------------------------------------------------------
+
 
 class Database:
     def __init__(self, db_url: str = None):
@@ -99,9 +95,6 @@ class Database:
         finally:
             session.close()
 
-    # ------------------------------------------------------------------
-    # document helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _file_hash(filename: str) -> str:
@@ -140,9 +133,6 @@ class Database:
             session.delete(doc)
         return True
 
-    # ------------------------------------------------------------------
-    # conversation / message helpers
-    # ------------------------------------------------------------------
 
     def add_message(self, conversation_id: str, role: str, content: str):
         with self._session() as session:
