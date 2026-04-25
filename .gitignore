@@ -4,4 +4,6 @@ __pycache__/
 *.pyc
 document_files/
 assets/*.png
+assets/*.jpg
+assets/*
 .vscode/
