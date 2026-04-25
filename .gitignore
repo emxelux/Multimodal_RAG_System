@@ -7,3 +7,6 @@ assets/*.png
 assets/*.jpg
 assets/*
 .vscode/
+data_preprocessing/work.py
+data_preprocessing/work
+qdrant_storage/

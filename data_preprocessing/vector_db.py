@@ -1,146 +1,75 @@
-"""
-vector_db.py — Qdrant hybrid (dense + sparse) vector store wrapper.
-
-Uses:
-  - Dense  : BAAI/bge-small-en-v1.5  (HuggingFaceEmbeddings)
-  - Sparse : Qdrant/bm25              (FastEmbedSparse)
-  - Mode   : HYBRID                   (RRF fusion)
-
-langchain_qdrant requires the sparse vector field to be named "langchain-sparse"
-exactly. The collection is validated on startup and recreated if the schema
-is wrong (e.g. created by an older version of this code).
-"""
-
-import uuid
-import os
 from typing import List, Optional
-from dotenv import load_dotenv
-
-from langchain_qdrant import QdrantVectorStore, RetrievalMode
-from langchain_core.documents import Document
 from qdrant_client import QdrantClient
-from qdrant_client.models import (
-    Distance,
-    VectorParams,
-    SparseVectorParams,
-    Filter,
-    FieldCondition,
-    MatchValue,
-)
-
-from data_preprocessing.embedding import get_dense_embeddings, get_sparse_embeddings
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+from llama_index.core import StorageContext, VectorStoreIndex
+from llama_index.core.schema import BaseNode, NodeWithScore
+from llama_index.postprocessor.sbert_rerank import SentenceTransformerRerank
+from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
-SPARSE_VECTOR_NAME = "langchain-sparse"
-
-
-class VectorDB:
-    def __init__(self):
-        self.collection_name = "chatpdf_knowledge"
-
-        self.client = QdrantClient(
-            url="https://bd1dcb05-82dd-48c8-a843-290ece2e38b3.us-west-2-0.aws.cloud.qdrant.io",
-            api_key=os.getenv("QDRANT_API_KEY"),
-        )
-
-        # Models are loaded lazily here (first call triggers download)
-        self._ensure_collection()
-
-        self.vectorstore = QdrantVectorStore(
+class RAGVectorStore:
+    def __init__(
+        self,
+        collection_name: str,
+        dense_embedding,
+        sparse_embedding: Optional[any] = None,
+        storage_path: str = "./qdrant_storage",
+        reranker_model: str = "BAAI/bge-reranker-base",
+        reranker_top_n: int = 5,
+    ) -> None:
+        self.collection_name = collection_name
+        self.dense_embedding = dense_embedding
+        self.sparse_embedding = sparse_embedding
+        self.client = QdrantClient(path=storage_path)
+        
+        self.vector_store = QdrantVectorStore(
             client=self.client,
             collection_name=self.collection_name,
-            embedding=get_dense_embeddings(),
-            sparse_embedding=get_sparse_embeddings(),
-            sparse_vector_name=SPARSE_VECTOR_NAME,
-            retrieval_mode=RetrievalMode.HYBRID,
+            enable_hybrid=True,
+        )
+        
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store
+        )
+        self.index = None
+        
+        self.reranker = SentenceTransformerRerank(
+            model=reranker_model,
+            top_n=reranker_top_n,
         )
 
-    # ------------------------------------------------------------------
-    # collection management
-    # ------------------------------------------------------------------
-
-    def _ensure_collection(self):
-        existing = [c.name for c in self.client.get_collections().collections]
-
-        if self.collection_name in existing:
-            info = self.client.get_collection(self.collection_name)
-            sparse_names = list((info.config.params.sparse_vectors or {}).keys())
-            if SPARSE_VECTOR_NAME not in sparse_names:
-                print(
-                    f"⚠️  Collection '{self.collection_name}' missing sparse field "
-                    f"'{SPARSE_VECTOR_NAME}' — recreating."
-                )
-                self.client.delete_collection(self.collection_name)
-            else:
-                return
-
-        vector_size = len(get_dense_embeddings().embed_query("test"))
-        self.client.create_collection(
-            collection_name=self.collection_name,
-            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
-            sparse_vectors_config={SPARSE_VECTOR_NAME: SparseVectorParams()},
-        )
-        print(f"✅ Collection '{self.collection_name}' created (dim={vector_size})")
-
-    # ------------------------------------------------------------------
-    # indexing
-    # ------------------------------------------------------------------
-
-    def build_index(self, documents: List[Document], source_name: str) -> str:
-        if not documents:
-            print(f"⚠️  No chunks to index for: {source_name}")
-            return ""
-
-        self._ensure_collection()
-        document_id = str(uuid.uuid4())
-
-        for doc in documents:
-            doc.metadata.setdefault("source", source_name)
-            doc.metadata["document_id"] = document_id
-
-        self.vectorstore.add_documents(documents=documents)
-        print(f"✅ Indexed {len(documents)} chunks from: {source_name}")
-        return document_id
-
-    # ------------------------------------------------------------------
-    # retrieval
-    # ------------------------------------------------------------------
-
-    def search(
-        self,
-        query: str,
-        top_k: int = 5,
-        source: Optional[str] = None,
-    ) -> List[dict]:
-        search_kwargs: dict = {"k": top_k}
-
-        if source:
-            search_kwargs["filter"] = Filter(
-                must=[
-                    FieldCondition(
-                        key="metadata.source",
-                        match=MatchValue(value=source),
-                    )
-                ]
+    def upsert_document(self, nodes: List[BaseNode]) -> VectorStoreIndex:
+        if not nodes:
+            raise ValueError("nodes cannot be empty")
+        
+        try:
+            self.index = VectorStoreIndex(
+                nodes=nodes,
+                storage_context=self.storage_context,
+                embed_model=self.dense_embedding,
             )
+            return self.index
+        except Exception as e:
+            raise RuntimeError(f"Failed to upsert documents: {str(e)}")
 
-        results = self.vectorstore.similarity_search(query=query, **search_kwargs)
-        return self._format_results(results)
-
-    # ------------------------------------------------------------------
-    # helpers
-    # ------------------------------------------------------------------
-
-    def _format_results(self, docs: List[Document]) -> List[dict]:
-        return [
-            {
-                "content": d.page_content,
-                "source": d.metadata.get("source"),
-                "page": d.metadata.get("page"),
-                "document_id": d.metadata.get("document_id"),
-                "has_images": d.metadata.get("has_images", False),
-                "has_tables": d.metadata.get("has_tables", False),
-            }
-            for d in docs
-        ]
+    def hybrid_search(self, query: str, top_k: int = 5) -> List[NodeWithScore]:
+        if self.index is None:
+            raise ValueError(
+                "Index not initialized. Run upsert_document() first."
+            )
+        
+        try:
+            retriever = self.index.as_retriever(
+                similarity_top_k=top_k * 3,
+                vector_store_query_mode="hybrid",
+            )
+            nodes = retriever.retrieve(query)
+            reranked_nodes = self.reranker.postprocess_nodes(
+                nodes,
+                query_str=query,
+            )
+            return reranked_nodes
+        except Exception as e:
+            raise RuntimeError(f"Hybrid search failed: {str(e)}")

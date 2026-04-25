@@ -47,6 +47,3 @@ def create_nodes(docs):
     return nodes
 
 
-test_doc = load_document("skills_guide.pdf")
-
-print(create_nodes(test_doc))
