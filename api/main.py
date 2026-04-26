@@ -1,16 +1,12 @@
-"""
-api/main.py — FastAPI entry point.
-"""
-
-import shutil
 import uuid
+import shutil
 import logging
 from pathlib import Path
 from typing import Optional
 from contextlib import asynccontextmanager
-
+from api.models import AskRequest, AskResponse
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query, status
-from pydantic import BaseModel
+
 
 logger = logging.getLogger(__name__)
 
@@ -75,25 +71,8 @@ DATA_DIR = ROOT_DIR / "document_files"
 DATA_DIR.mkdir(exist_ok=True)
 
 
-# ---------------------------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------------------------
-
-class AskRequest(BaseModel):
-    question: str
-    source: Optional[str] = None
-    conversation_id: Optional[str] = None
 
 
-class AskResponse(BaseModel):
-    answer: str
-    conversation_id: str
-    sources: list
-
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 
 @app.get("/")
 def homepage():
@@ -115,31 +94,7 @@ async def upload_file(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    try:
-        pages = load_pdf(file.filename)
-        child_chunks, _ = chunk_pdf(pages)
-
-        if not child_chunks:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="PDF contained no extractable text.",
-            )
-
-        get_vector_db().build_index(child_chunks, source_name=file.filename)
-        db_result = get_db().add_document(source=file.filename)
-
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.exception("Upload failed")
-        raise HTTPException(status_code=500, detail=str(exc))
-
-    return {
-        "file": file.filename,
-        "chunks_indexed": len(child_chunks),
-        "db_result": db_result,
-    }
-
+   pass
 
 @app.get("/documents/")
 def list_documents():

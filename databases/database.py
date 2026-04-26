@@ -1,24 +1,18 @@
-"""
-database.py — SQLAlchemy models and Database helper.
-
-Tables:
-  documents — tracks every PDF that has been ingested
-  messages  — stores per-conversation chat history
-"""
-
-import hashlib
 import os
+import hashlib
 from pathlib import Path
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, func
-from sqlalchemy.orm import sessionmaker, declarative_base
 from contextlib import contextmanager
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import sessionmaker, declarative_base
+from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, func
 
 load_dotenv()
 
 Base = declarative_base()
 
-# Absolute path — safe regardless of working directory
+
 DOCUMENT_DIR = Path(__file__).resolve().parents[1] / "document_files"
 
 
@@ -31,9 +25,12 @@ class Document(Base):
     content_hash = Column(String, unique=True, nullable=False)
     source       = Column(String, nullable=False)
     created_at   = Column(DateTime, server_default=func.now())
+    parent_id    = Column(UUID(as_uuid=True))
+    parent_metadata = Column(JSONB, nullable = False)
+    parent_content = Column(String, nullable=True)
 
     def __repr__(self):
-        return f"<Document(id={self.id}, source='{self.source}')>"
+        return f"<Document(id={self.id}, source='{self.source}, parent = {self.parent_id}')>"
 
 
 class Message(Base):
@@ -57,9 +54,6 @@ class Database:
         if not raw_url:
             raise ValueError("DATABASE_URL is not set")
 
-        # Strip channel_binding parameter — psycopg2-binary does not support it
-        # (it's a psycopg3 / libpq 13+ feature). Neon includes it in connection strings
-        # but psycopg2 will raise an error if it sees an unknown parameter.
         url = self._strip_param(raw_url, "channel_binding")
 
         self.engine = create_engine(
@@ -73,8 +67,6 @@ class Database:
 
     @staticmethod
     def _strip_param(url: str, param: str) -> str:
-        """Remove a specific query parameter from a connection URL."""
-        from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
         parsed = urlparse(url)
         params = parse_qs(parsed.query, keep_blank_values=True)
         params.pop(param, None)
@@ -83,7 +75,6 @@ class Database:
 
     @contextmanager
     def _session(self):
-        """Context manager that commits on success and rolls back on failure."""
         Session = sessionmaker(bind=self.engine)
         session = Session()
         try:
@@ -102,12 +93,12 @@ class Database:
         with open(path, "rb") as f:
             return hashlib.sha256(f.read()).hexdigest()
 
-    def add_document(self, source: str) -> str:
+    def add_document(self, source: str, parent_id: str = None, parent_metadata: dict = None, parent_content: str = None) -> str:
         with self._session() as session:
             content_hash = self._file_hash(source)
             if session.query(Document).filter_by(content_hash=content_hash).first():
                 return "Document already exists."
-            session.add(Document(content_hash=content_hash, source=source))
+            session.add(Document(content_hash=content_hash, source=source, parent_id=parent_id, parent_metadata=parent_metadata, parent_content=parent_content))
         return "Document added successfully."
 
     def list_documents(self) -> list:
