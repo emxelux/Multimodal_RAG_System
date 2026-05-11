@@ -21,14 +21,14 @@ class RAGVectorStore:
         collection_name: str = "pdf_collection",
         dense_embedding = dense_embedding,
         sparse_embedding = sparse_embedding,
-        storage_path: str = "./qdrant_storage",
+        storage_path: str = "https://bd1dcb05-82dd-48c8-a843-290ece2e38b3.us-west-2-0.aws.cloud.qdrant.io",
         reranker_model: str = "BAAI/bge-reranker-base",
         reranker_top_n: int = 5,
     ) -> None:
         self.collection_name = collection_name
         self.dense_embedding = dense_embedding
         self.sparse_embedding = sparse_embedding
-        self.client = QdrantClient(path=storage_path)
+        self.client = QdrantClient(url=storage_path, api_key = os.environ.get("QDRANT_API_KEY"))
         
         self.vector_store = QdrantVectorStore(
             client=self.client,
