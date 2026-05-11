@@ -36,6 +36,7 @@ langsmith
 # ---------- Vector Database ----------
 qdrant-client
 fastembed
+psycopg2
 
 # ---------- Embeddings ----------
 sentence-transformers
