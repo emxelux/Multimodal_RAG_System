@@ -11,7 +11,7 @@ llm = LLM()
 db = Database()
 
 store = RAGVectorStore(
-    collection_name="chatpdf",
+    collection_name="pdf_collection",
     dense_embedding=dense_embedding,
     sparse_embedding=sparse_embedding
 )
@@ -41,8 +41,8 @@ store.upsert_document(child_nodes)
 query = "What are the skill under Cloud & Deployment under Emmanuel Olanrewaju Tech stack?"
 context = store.hybrid_search(query, top_k=3, source=source)
 
-
-generated_answer = llm.generate_response(query, context)
-print(generated_answer)
+print(context)
+# generated_answer = llm.generate_response(query, context)
+# print(generated_answer)
 
 
