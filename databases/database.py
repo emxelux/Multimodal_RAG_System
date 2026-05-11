@@ -22,7 +22,7 @@ class Document(Base):
     __tablename__ = "documents"
 
     id           = Column(Integer, primary_key=True)
-    content_hash = Column(String, unique=True, nullable=False)
+    # content_hash = Column(String, unique=True, nullable=False)
     source       = Column(String, nullable=False)
     created_at   = Column(DateTime, server_default=func.now())
     parent_id    = Column(UUID(as_uuid=True))
@@ -87,18 +87,18 @@ class Database:
             session.close()
 
 
-    @staticmethod
-    def _file_hash(filename: str) -> str:
-        path = DOCUMENT_DIR / filename
-        with open(path, "rb") as f:
-            return hashlib.sha256(f.read()).hexdigest()
+    # @staticmethod
+    # def _file_hash(filename: str) -> str:
+    #     path = DOCUMENT_DIR / filename
+    #     with open(path, "rb") as f:
+    #         return hashlib.sha256(f.read()).hexdigest()
 
     def add_document(self, source: str, parent_id: str = None, parent_metadata: dict = None, parent_content: str = None) -> str:
         with self._session() as session:
-            content_hash = self._file_hash(source)
-            if session.query(Document).filter_by(content_hash=content_hash).first():
+            # content_hash = self._file_hash(source)
+            if session.query(Document).filter_by(parent_id=parent_id).first():
                 return "Document already exists."
-            session.add(Document(content_hash=content_hash, source=source, parent_id=parent_id, parent_metadata=parent_metadata, parent_content=parent_content))
+            session.add(Document(source=source, parent_id=parent_id, parent_metadata=parent_metadata, parent_content=parent_content))
         return "Document added successfully."
 
     def list_documents(self) -> list:
@@ -108,6 +108,11 @@ class Database:
                 {"id": d.id, "source": d.source, "created_at": str(d.created_at)}
                 for d in docs
             ]
+    
+    def get_parent_content(self, parent_id) -> str:
+        with self._session() as session:
+            doc = session.query(Document).filter_by(parent_id=parent_id).first()
+            return doc.parent_content if doc else None
 
     def get_document(self, doc_id: int):
         with self._session() as session:

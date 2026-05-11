@@ -25,7 +25,7 @@ def load_document(file_path:str):
     documents = parser.load_data(f"{DATA_DIR}/{file_path}")
     docs = []
     for doc in documents:
-        page_num = doc.metadata.get("page_label") or doc.metadata.get("page_number", "1")
+        page_num = doc.metadata.get("page")
         text = doc.get_content()
         docs.append({
             "page_num": page_num,
@@ -43,7 +43,7 @@ def create_nodes(docs):
         for doc in docs
     ]
     parser = MarkdownNodeParser()
-    nodes = parser.get_nodes_from_documents(documents)
-    return nodes
+    parent_nodes = parser.get_nodes_from_documents(documents)
+    return parent_nodes
 
 
