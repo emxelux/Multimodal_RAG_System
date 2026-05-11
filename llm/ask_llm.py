@@ -1,36 +1,48 @@
-"""
-ask_llm.py — Quick CLI test: upload a PDF and ask a question.
-
-Usage (from project root):
-    python -m llm.ask_llm
-"""
-
-from data_preprocessing.ingest import load_pdf
-from data_preprocessing.chunking import chunk_pdf
-from data_preprocessing.embedding import dense_embeddings
-from data_preprocessing.vector_db import VectorDB
+import uuid
+from databases.database import Database, Document
+from data_preprocessing.ingest import load_document, create_nodes
+from data_preprocessing.chunking import chunk_nodes
+from data_preprocessing.embedding import dense_embedding, sparse_embedding
+from data_preprocessing.vector_db import RAGVectorStore
 from llm.llm_connection import LLM
 
-PDF_FILE = "about.pdf"   # place your PDF in document_files/
-QUESTION = "What is this document about?"
+llm = LLM()
 
-def main():
-    print(f"Loading '{PDF_FILE}' ...")
-    pages = load_pdf(PDF_FILE)
-    print(f"  → {len(pages)} pages")
+db = Database()
 
-    child_chunks, parent_docs = chunk_pdf(pages, dense_embeddings)
-    print(f"  → {len(child_chunks)} chunks, {len(parent_docs)} parents")
+store = RAGVectorStore(
+    collection_name="chatpdf",
+    dense_embedding=dense_embedding,
+    sparse_embedding=sparse_embedding
+)
+source = "Emmanuel Abiodun Resume (Tech).pdf"
 
-    db = VectorDB()
-    db.build_index(child_chunks, source_name=PDF_FILE)
+test_doc = load_document(source)
+parent_nodes = create_nodes(test_doc)
 
-    results = db.search(QUESTION, top_k=5)
-    print(f"\nTop {len(results)} results retrieved.")
+for node in parent_nodes:
+    parent_id = str(uuid.uuid4())
+    node.metadata["parent_id"] = parent_id
 
-    llm = LLM()
-    answer = llm.generate_response(query=QUESTION, context=results)
-    print(f"\nQuestion: {QUESTION}\nAnswer  : {answer}")
+    db.add_document(
+        source=source,
+        parent_id=parent_id,
+        parent_metadata=node.metadata,
+        parent_content=node.get_content(),
+    )
 
-if __name__ == "__main__":
-    main()
+child_nodes = chunk_nodes(parent_nodes)
+
+for child in child_nodes:
+    if "parent_id" not in child.metadata:
+        child.metadata["parent_id"] = child.metadata.get("parent_id") or child.extra_info.get("parent_id")
+
+store.upsert_document(child_nodes)
+query = "What are the skill under Cloud & Deployment under Emmanuel Olanrewaju Tech stack?"
+context = store.hybrid_search(query, top_k=3, source=source)
+
+
+generated_answer = llm.generate_response(query, context)
+print(generated_answer)
+
+
