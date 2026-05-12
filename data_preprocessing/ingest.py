@@ -7,10 +7,9 @@ from llama_index.core.node_parser import MarkdownNodeParser
 
 dotenv.load_dotenv()
 
-
-
+# Storage root
 if os.path.exists("/data"):
-    BASE_STORAGE = Path("/data")  # HuggingFace Persistent Storage
+    BASE_STORAGE = Path("/data")
 else:
     BASE_STORAGE = Path(__file__).resolve().parent
 
@@ -23,29 +22,41 @@ parser = LlamaParse(
 )
 
 
-def load_document(file_path:str):
-    documents = parser.load_data(f"{UPLOAD_DIR}/{file_path}")
+
+def load_document(file_path: str):
+    file_path = str(file_path)
+
+    # 🔥 FIX: DO NOT prepend UPLOAD_DIR again
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    documents = parser.load_data(file_path)
+
+    if not documents:
+        raise ValueError("LlamaParse returned empty document (likely scanned PDF or bad path)")
+
     docs = []
     for doc in documents:
-        page_num = doc.metadata.get("page")
-        text = doc.get_content()
         docs.append({
-            "page_num": page_num,
+            "page_num": doc.metadata.get("page"),
             "source": file_path,
-            "content": text,
+            "content": doc.get_content(),
         })
+
     return docs
+
 
 def create_nodes(docs):
     documents = [
-        Document(text=doc["content"], metadata={
-            "page": doc["page_num"],
-            "source": doc["source"]
-        })
+        Document(
+            text=doc["content"],
+            metadata={
+                "page": doc["page_num"],
+                "source": doc["source"]
+            }
+        )
         for doc in docs
     ]
+
     parser = MarkdownNodeParser()
-    parent_nodes = parser.get_nodes_from_documents(documents)
-    return parent_nodes
-
-
+    return parser.get_nodes_from_documents(documents)
