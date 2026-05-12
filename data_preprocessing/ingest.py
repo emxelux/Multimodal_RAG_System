@@ -9,11 +9,13 @@ dotenv.load_dotenv()
 
 
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT_DIR / "document_files"
-ASSETS_DIR = ROOT_DIR / "assets"
-ASSETS_DIR.mkdir(exist_ok=True)
+if os.path.exists("/data"):
+    BASE_STORAGE = Path("/data")  # HuggingFace Persistent Storage
+else:
+    BASE_STORAGE = Path(__file__).resolve().parent
 
+UPLOAD_DIR = BASE_STORAGE / "document_files"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 parser = LlamaParse(
     result_type="markdown",
@@ -22,7 +24,7 @@ parser = LlamaParse(
 
 
 def load_document(file_path:str):
-    documents = parser.load_data(f"{DATA_DIR}/{file_path}")
+    documents = parser.load_data(f"{UPLOAD_DIR}/{file_path}")
     docs = []
     for doc in documents:
         page_num = doc.metadata.get("page")
