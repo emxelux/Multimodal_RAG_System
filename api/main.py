@@ -46,6 +46,8 @@ async def upload_file(file: UploadFile = File(...)):
         )
 
     child_nodes = chunk_nodes(parent_nodes)
+    if not child_nodes:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No text could be extracted from this PDF.")
     for child in child_nodes:
         if "parent_id" not in child.metadata:
             child.metadata["parent_id"] = child.metadata.get("parent_id") or child.extra_info.get("parent_id")
