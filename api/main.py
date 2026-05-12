@@ -35,7 +35,8 @@ llm = LLM()
 active_document = None
 
 
-=
+app = FastAPI()
+
 @app.get("/")
 def check_page_status():
     return {"response": "Hello! The app is working perfectly."}
