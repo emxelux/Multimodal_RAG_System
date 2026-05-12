@@ -30,6 +30,12 @@ class RAGVectorStore:
         self.sparse_embedding = sparse_embedding
         self.client = QdrantClient(url=storage_path, api_key = os.environ.get("QDRANT_API_KEY"))
         
+        self.client.create_payload_index(
+        collection_name=self.collection_name,
+        field_name="source",
+        field_schema="keyword"
+    )
+        
         self.vector_store = QdrantVectorStore(
             client=self.client,
             collection_name=self.collection_name,
