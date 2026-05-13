@@ -26,7 +26,6 @@ parser = LlamaParse(
 def load_document(file_path: str):
     file_path = str(file_path)
 
-    # 🔥 FIX: DO NOT prepend UPLOAD_DIR again
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
 
