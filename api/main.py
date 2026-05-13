@@ -11,6 +11,8 @@ from llm.llm_connection import LLM
 
 
 
+
+
 if os.path.exists("/data"):
     BASE_STORAGE = Path("/data")  # HuggingFace / Docker persistent storage
 else:
@@ -46,7 +48,7 @@ def check_page_status():
 def process_document(file_path: Path):
     global active_document
 
-    file_path = file_path.resolve()  # 🔥 FIX: normalize path
+    file_path = file_path.resolve() 
     filename = file_path.name
 
     print(f"[INGESTION STARTED] {file_path}")
@@ -62,6 +64,7 @@ def process_document(file_path: Path):
 
     if not parent_nodes:
         raise RuntimeError("Failed to create parent nodes from document")
+    print("Parent Node created Sucessfully")
 
     for node in parent_nodes:
         parent_id = str(uuid.uuid4())
@@ -78,6 +81,7 @@ def process_document(file_path: Path):
 
     if not child_nodes:
         raise RuntimeError("No text chunks generated from document")
+    print("Child node created successfully")
 
     # Ensure parent_id propagation
     for child in child_nodes:
@@ -89,6 +93,7 @@ def process_document(file_path: Path):
 
     
     vec_db.upsert_document(child_nodes)
+    print("Upsert Successful")
 
 
     active_document = filename
@@ -122,7 +127,7 @@ async def upload_file(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail="An Error Occured"
         )
 
 
@@ -131,7 +136,7 @@ async def ask_question(query: str):
 
     global active_document
 
-    # 🔴 prevents early query before ingestion completes
+    # this prevents early query before ingestion completes
     if active_document is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
