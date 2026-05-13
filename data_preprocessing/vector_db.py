@@ -18,7 +18,7 @@ load_dotenv()
 class RAGVectorStore:
     def __init__(
         self,
-        collection_name: str = "pdf_vector_db",
+        collection_name: str = "pdf_collection",
         dense_embedding = dense_embedding,
         sparse_embedding = sparse_embedding,
         storage_path: str = "https://bd1dcb05-82dd-48c8-a843-290ece2e38b3.us-west-2-0.aws.cloud.qdrant.io",
