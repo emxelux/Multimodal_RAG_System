@@ -77,7 +77,8 @@ class RAGVectorStore:
 
 
 
-    def hybrid_search(self, query: str, source: Optional[str] = None, top_k: int = 5) -> List[NodeWithScore]:
+    def hybrid_search(self, query: str, source: Optional[str] = None, top_k: int = 5) -> List[str]:
+        
         try:
             index = self._get_or_create_index()
             
@@ -98,10 +99,47 @@ class RAGVectorStore:
                 filters=filters,
             )
             nodes = retriever.retrieve(query)
+            
+            if not nodes:
+                return []
+            
             reranked_nodes = self.reranker.postprocess_nodes(
                 nodes,
                 query_str=query,
             )
-            return [db.get_parent_content(n.metadata.get("parent_id")) for n in reranked_nodes]
+            
+            context = []
+            seen_parent_ids = set()  # Avoid duplicate pages
+            
+            for node in reranked_nodes:
+                parent_id = node.metadata.get("parent_id")
+                
+                if not parent_id:
+                    print(f"[WARNING] Node {node.id_} has no parent_id, using chunk content instead")
+                    content = node.get_content()
+                    if content and content.strip():
+                        context.append(content)
+                    continue
+                
+                if parent_id in seen_parent_ids:
+                    print(f"[DEBUG] Skipping duplicate parent_id {parent_id}")
+                    continue
+                
+                
+                parent_content = db.get_parent_content(parent_id)
+                
+                if parent_content and parent_content.strip():
+                    context.append(parent_content)
+                    seen_parent_ids.add(parent_id)
+                else:
+                    
+                    print(f"[WARNING] Parent {parent_id} not found in database, using chunk content instead")
+                    chunk_content = node.get_content()
+                    if chunk_content and chunk_content.strip():
+                        context.append(chunk_content)
+            
+            return context if context else []
+            
         except Exception as e:
+            print(f"[ERROR] Hybrid search failed: {str(e)}")
             raise RuntimeError(f"Hybrid search failed: {str(e)}")
