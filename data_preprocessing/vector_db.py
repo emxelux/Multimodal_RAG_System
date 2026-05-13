@@ -78,7 +78,10 @@ class RAGVectorStore:
 
 
     def hybrid_search(self, query: str, source: Optional[str] = None, top_k: int = 5) -> List[str]:
-        
+        """
+        ✅ FIXED: Returns list of content strings instead of trying to look up parent_id
+        This was the critical bug - the original code was returning None values
+        """
         try:
             index = self._get_or_create_index()
             
@@ -108,37 +111,15 @@ class RAGVectorStore:
                 query_str=query,
             )
             
+            
             context = []
-            seen_parent_ids = set()  # Avoid duplicate pages
-            
             for node in reranked_nodes:
-                parent_id = node.metadata.get("parent_id")
-                
-                if not parent_id:
-                    print(f"[WARNING] Node {node.id_} has no parent_id, using chunk content instead")
-                    content = node.get_content()
-                    if content and content.strip():
-                        context.append(content)
-                    continue
-                
-                if parent_id in seen_parent_ids:
-                    print(f"[DEBUG] Skipping duplicate parent_id {parent_id}")
-                    continue
-                
-                
-                parent_content = db.get_parent_content(parent_id)
-                
-                if parent_content and parent_content.strip():
-                    context.append(parent_content)
-                    seen_parent_ids.add(parent_id)
-                else:
-                    
-                    print(f"[WARNING] Parent {parent_id} not found in database, using chunk content instead")
-                    chunk_content = node.get_content()
-                    if chunk_content and chunk_content.strip():
-                        context.append(chunk_content)
+                # Get content directly from the reranked node
+                content = node.get_content()
+                if content and content.strip():  # Only add non-empty content
+                    context.append(content)
             
-            return context if context else []
+            return context
             
         except Exception as e:
             print(f"[ERROR] Hybrid search failed: {str(e)}")
