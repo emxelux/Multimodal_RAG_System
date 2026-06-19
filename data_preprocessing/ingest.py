@@ -1,61 +1,60 @@
 import os
-import dotenv
-from pathlib import Path
+from dotenv import load_dotenv
 from llama_parse import LlamaParse
-from llama_index.core import Document
-from llama_index.core.node_parser import MarkdownNodeParser
+from langchain_core.documents import Document
 
-dotenv.load_dotenv()
+load_dotenv()
 
-# Storage root
-if os.path.exists("/data"):
-    BASE_STORAGE = Path("/data")
-else:
-    BASE_STORAGE = Path(__file__).resolve().parent
+os.environ["LLAMA_API_KEY"] = os.getenv("LLAMA_API_KEY")
 
-UPLOAD_DIR = BASE_STORAGE / "document_files"
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+from llama_parse import LlamaParse
+import json
+
+# Initialize the parser and set the result type to JSON
 parser = LlamaParse(
-    result_type="markdown",
     api_key=os.getenv("LLAMA_API_KEY"),
+    result_type="json"  
 )
 
+def ingest_pdf(file_path:str):
+    json_result = parser.get_json_result(file_path)
+    return json_result
 
 
-def load_document(file_path: str):
-    file_path = str(file_path)
-
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
-
-    documents = parser.load_data(file_path)
-
-    if not documents:
-        raise ValueError("LlamaParse returned empty document (likely scanned PDF or bad path)")
-
-    docs = []
-    for doc in documents:
-        docs.append({
-            "page_num": doc.metadata.get("page"),
-            "source": file_path,
-            "content": doc.get_content(),
-        })
-
-    return docs
 
 
-def create_nodes(docs):
-    documents = [
-        Document(
-            text=doc["content"],
-            metadata={
-                "page": doc["page_num"],
-                "source": doc["source"]
-            }
+def build_documents(parsed_json, source_name):
+    documents = []
+
+    pages = parsed_json[0]["pages"]
+
+    for page in pages:
+
+        page_num = page.get("page", 0)
+
+        markdown_text = page.get("md", "")
+
+        documents.append(
+            Document(
+                page_content=markdown_text,
+                metadata={
+                    "source": source_name,
+                    "page": page_num
+                }
+            )
         )
-        for doc in docs
-    ]
 
-    parser = MarkdownNodeParser()
-    return parser.get_nodes_from_documents(documents)
+    return documents
+
+
+# file_path = "./document_files/MultimodalMachineLearning.pdf"
+
+# json_result = ingest_pdf(file_path)
+
+# documents = build_documents(
+#     json_result,
+#     source_name=os.path.basename(file_path)
+# )
+
+# print(documents[2])

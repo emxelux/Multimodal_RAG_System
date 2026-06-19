@@ -59,3 +59,4 @@ sequenceDiagram
     PG-->>API: Full Context Data
     API->>LLM: Full Context + Query + Prompt
     LLM-->>User: Grounded, Context-Aware Response
+# Multimodal_RAG_System
