@@ -10,3 +10,9 @@ assets/*
 data_preprocessing/work.py
 data_preprocessing/work
 qdrant_storage/
+.venv/
+/.venv/
+output.json
+output1.json
+document_files
+document_files/
