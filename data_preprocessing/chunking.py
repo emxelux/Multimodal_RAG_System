@@ -1,4 +1,4 @@
-from langchain_text_splitters import MarkdownHeaderTextSplitter
+from langchain_text_splitters.markdown import MarkdownHeaderTextSplitter
 from langchain_core.documents import Document
 
 headers_to_split_on = [

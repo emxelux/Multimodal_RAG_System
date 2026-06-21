@@ -1,12 +1,21 @@
-from fastapi import FastAPI, HTTPException, status, APIRouter
+from fastapi import FastAPI, Depends
+from app.routes import users,login
+from databases.database import Base, engine
 
 
-app = FastAPI(
-    tag = ["Full Backend Infrastructure"]
-)
+Base.metadata.create_all(bind=engine)
+
+
+app = FastAPI(title="MY RAG SYSTEM")
+
+
+
+app.include_router(login.router)
+app.include_router(users.router)
+
+
 
 @app.get("/")
-def test_connection():
-    return {"response": "This API is working perfectly"}
-
+def test_api():
+    return {"status": "The Backend API is working succesfully"}
 
