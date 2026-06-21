@@ -1,5 +1,8 @@
+from app.main import app
+
+
 def main():
-    print("Hello from chatpdf!")
+    print("chatpdf API is available via app.main:app")
 
 
 if __name__ == "__main__":

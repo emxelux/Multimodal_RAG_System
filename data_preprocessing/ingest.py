@@ -1,23 +1,33 @@
 import os
-from dotenv import load_dotenv
-from llama_parse import LlamaParse
 from langchain_core.documents import Document
 
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    load_dotenv = None
 
-os.environ["LLAMA_API_KEY"] = os.getenv("LLAMA_API_KEY")
+try:
+    from llama_parse import LlamaParse
+except ModuleNotFoundError:
+    LlamaParse = None
 
+if load_dotenv is not None:
+    load_dotenv()
 
-from llama_parse import LlamaParse
-import json
-
-# Initialize the parser and set the result type to JSON
-parser = LlamaParse(
-    api_key=os.getenv("LLAMA_API_KEY"),
-    result_type="json"  
-)
+llama_api_key = os.getenv("LLAMA_API_KEY")
+if llama_api_key:
+    os.environ["LLAMA_API_KEY"] = llama_api_key
 
 def ingest_pdf(file_path:str):
+    if LlamaParse is None:
+        raise ImportError(
+            "llama_parse is not installed. Install project dependencies or use the local sample JSON fixture."
+        )
+
+    parser = LlamaParse(
+        api_key=llama_api_key,
+        result_type="json"
+    )
     json_result = parser.get_json_result(file_path)
     return json_result
 
