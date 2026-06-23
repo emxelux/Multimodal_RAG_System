@@ -6,15 +6,14 @@ from pathlib import Path
 
 
 file_path = "./document_files/MultimodalMachineLearning.pdf"
-sample_json_path = Path(__file__).resolve().parents[1] / "output1.json"
+# sample_json_path = Path(__file__).resolve().parents[1] / "output1.json"
 
 json_result = ingest_pdf(file_path)
 documents = build_documents(
     json_result,
     source_name=os.path.basename(file_path)
 )
+# print(json_result)
 
 
-nodes = split_markdown_document(documents=documents)
-
-print(nodes[18])
+nodes = split_markdown_document(documents)
