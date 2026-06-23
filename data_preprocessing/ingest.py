@@ -37,12 +37,17 @@ def ingest_pdf(file_path:str):
 def build_documents(parsed_json, source_name):
     documents = []
 
-    pages = parsed_json[0]["pages"]
+    # 1. Guard clause: Check if parsed_json is empty, None, or not a list
+    if not parsed_json or not isinstance(parsed_json, list):
+        print(f"Warning: parsed_json is empty or invalid for {source_name}")
+        return documents
+
+    # 2. Safe extraction using .get() just in case "pages" is missing
+    first_item = parsed_json[0]
+    pages = first_item.get("pages", [])
 
     for page in pages:
-
         page_num = page.get("page", 0)
-
         markdown_text = page.get("md", "")
 
         documents.append(
