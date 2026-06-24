@@ -26,3 +26,8 @@ class UserUpdate(BaseModel):
 
 class TokenData(BaseModel):
     id:str
+
+
+class QueryIn(BaseModel):
+    query:str
+    document_id:str

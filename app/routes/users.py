@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import col, delete, func, select 
 from .login import oauth2_scheme
 from databases.database import get_db
-from databases.utils import verify, hash
 from databases.oauth2 import get_current_user
+from databases.utils import verify, hash
 from databases.models import User
 from typing import List
 from databases.schemas import UserCreate, UserOut, UserUpdate
