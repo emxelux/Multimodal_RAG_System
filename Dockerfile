@@ -38,4 +38,4 @@ EXPOSE 7860
 
 # Production Uvicorn command
 # Use --workers 1 if you are on a resource-constrained tier to avoid OOM
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860", "--timeout-keep-alive", "120"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860", "--timeout-keep-alive", "120"]
