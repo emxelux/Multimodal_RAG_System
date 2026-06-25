@@ -3,12 +3,6 @@
 # Multi-stage build: keeps the final image lean (~400 MB vs ~1.5 GB)
 # =============================================================
 
-# ─────────────────────────────────────────────────────────────
-# Stage 1 · builder
-#   • Compiles every dependency.
-#   • Pre-downloads the BM25 sparse model so cold starts are instant.
-#   • Nothing from this stage leaks into the final image.
-# ─────────────────────────────────────────────────────────────
 FROM python:3.13-slim AS builder
 
 WORKDIR /build
@@ -29,9 +23,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Pre-download fastembed's BM25 model (~15 MB).
 # Without this, the first request after container start stalls
 # while fastembed downloads the model at runtime.
+RUN mkdir -p /install/fastembed_cache && chmod -R 777 /install/fastembed_cache
+
 RUN FASTEMBED_CACHE_PATH=/install/fastembed_cache \
     python -c "from fastembed import SparseTextEmbedding; SparseTextEmbedding('Qdrant/bm25')"
-
 
 # ─────────────────────────────────────────────────────────────
 # Stage 2 · runtime
