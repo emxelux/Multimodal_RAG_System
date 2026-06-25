@@ -29,6 +29,13 @@ from data_preprocessing.vector_db import (
 from llm.ask_llm import generation
 from fastapi.middleware.cors import CORSMiddleware
 
+from databases.database import engine
+from databases import models  # Make sure this imports the file where your "User" model lives
+
+# This line tells SQLAlchemy to physically create tables in Postgres if they don't exist
+models.Base.metadata.create_all(bind=engine)
+
+
 app = FastAPI(tags=["Main APP"])
 
 app.add_middleware(
