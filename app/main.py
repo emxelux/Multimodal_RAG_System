@@ -2,15 +2,17 @@ import uuid
 import shutil
 from pathlib import Path
 from app.routes import login, users
-from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
 
 # ===== Auth / DB imports =====
 from databases.database import get_db
+from sqlalchemy.orm import Session
+from databases.utils import hash_pdf
 from databases.oauth2 import get_current_user
-from databases.models import User
+from databases.models import User, Document
 
 # ===== Schemas =====
-from databases.schemas import QueryIn
+from databases.schemas import QueryIn, DocumentIn
 
 # ===== Ingestion / Chunking =====
 from data_preprocessing.ingest import ingest_pdf, build_documents
@@ -47,7 +49,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 @app.get("/")
-def home():
+def health_check():
     return {"message": "ChatPDF backend is running"}
 
 
@@ -57,10 +59,12 @@ def home():
 @app.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Upload a PDF, parse it, split into chunks, and store in vector DB.
+    Checks file content hash to prevent duplicate parsing and storage overhead.
     Returns a document_id that the frontend must send later to /generation.
     """
     try:
@@ -69,48 +73,81 @@ async def upload_file(
 
         original_filename = file.filename
         document_id = str(uuid.uuid4())
-        print("\n\n")
-        print(document_id)
-        print("\n\n")
 
-        # Save file with unique internal filename
+        # 1) Temporary save to run hash_pdf on the physical file
         unique_name = f"{current_user.id}_{document_id}_{original_filename}"
         saved_path = UPLOAD_DIR / unique_name
 
         with open(saved_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # 1) Parse PDF
+        # 2) Compute hash and check for duplicates in the DB
+        hashed_content = hash_pdf(saved_path)
+        existing_file = db.query(Document).filter(Document.document_hash == hashed_content).first()
+        
+        if existing_file:
+            # Clean up the file we just saved to avoid redundant disk usage
+            if saved_path.exists():
+                saved_path.unlink()
+                
+            return {
+                "status": "Document already exists and is indexed",
+                "document_id": existing_file.id,
+                "saved_path": existing_file.file_path,
+                "chunks_indexed": getattr(existing_file, "chunk_count", 0),  # Falls back safely if not explicitly in your schema
+                "duplicated": True
+            }
+
+        # 3) Process new document if no duplicate is found
+        # Parse PDF
         json_result = ingest_pdf(file_path=str(saved_path))
 
-        # 2) Build LangChain Documents
+        # Build LangChain Documents
         documents = build_documents(json_result, original_filename)
 
-        # 3) Split into chunks
+        # Split into chunks
         nodes = split_markdown_document(documents)
         if not nodes:
+            if saved_path.exists():
+                saved_path.unlink()
             raise HTTPException(
                 status_code=400,
                 detail="No chunks were created from the uploaded document."
             )
 
-        # 4) Upsert chunks into vector store
+        # Upsert chunks into vector store
         upsert_split_documents(
             markdown_nodes=nodes,
             user_id=str(current_user.id),
             source_document=document_id
         )
 
+        # 4) Save metadata & hash record to relational DB
+        new_doc = Document(
+            id=document_id,
+            document_hash=hashed_content,
+            file_path=str(saved_path),
+            user_id=current_user.id
+        )
+        # Handle chunk_count dynamically if it exists on your Document model
+        if hasattr(new_doc, 'chunk_count'):
+            new_doc.chunk_count = len(nodes)
+            
+        db.add(new_doc)
+        db.commit()
+
         return {
             "status": "Successfully indexed and processed document",
             "document_id": document_id,
             "saved_path": str(saved_path),
-            "chunks_indexed": len(nodes)
+            "chunks_indexed": len(nodes),
+            "duplicated": False
         }
 
     except HTTPException:
         raise
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
@@ -159,8 +196,6 @@ def retrieval_and_generation(
         for idx, doc in enumerate(final_context):
             source_name = doc.metadata.get("source_name")
             page = doc.metadata.get("page")
-            # section_title = doc.metadata.get("section_title")
-            # chunk_index = doc.metadata.get("chunk_index")
 
             block = (
                 f"[Chunk {idx + 1}]\n"
