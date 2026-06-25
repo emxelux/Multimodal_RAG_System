@@ -31,3 +31,9 @@ class TokenData(BaseModel):
 class QueryIn(BaseModel):
     query:str
     document_id:str
+
+
+class DocumentIn(BaseModel):
+    document_id: str
+    documment_hash:str
+    

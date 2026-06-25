@@ -14,7 +14,7 @@ os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY")
 
 
 model = init_chat_model(
-    model = "gemini-3.1-flash-lite",
+    model = "gemini-3.5-flash",
     model_provider="google_genai"
 )
 
