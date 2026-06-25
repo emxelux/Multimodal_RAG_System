@@ -1,19 +1,52 @@
-# Never bake secrets into the image
+# =============================================================
+# .dockerignore — what NOT to ship into the Docker build context
+#
+# Smaller context = faster builds and no secrets in the image.
+# =============================================================
+
+# ── Secrets — NEVER bake these into an image ─────────────────
 .env
+*.pem
+*.key
 
-# Python cache
-**/__pycache__
-**/*.pyc
-**/*.pyo
+# ── Python cache ──────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 
-# Local qdrant storage
-CHATPDF/
-my_storage/
+# ── Virtual environments ──────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Local data — these are Docker volumes in production ───────
 qdrant_storage/
+uploads/
+document_files/
+
+# ── Version control ───────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+
+# ── Editor & OS noise ─────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# ── Test & dev artifacts ──────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+*.zip
+output.json
+output1.json
 assets/
 
-# Dev artifacts
-.git/
-.vscode/
-.ipynb_checkpoints/
-*.zip
+# ── Docs (not needed at runtime) ──────────────────────────────
+README.md
+CHANGELOG.md

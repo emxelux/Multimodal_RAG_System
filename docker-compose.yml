@@ -1,0 +1,101 @@
+# =============================================================
+# ChatPDF Pro — Docker Compose
+#
+# Usage:
+#   cp .env.example .env      # fill in your API keys
+#   docker compose up --build
+#
+# Services:
+#   api  → FastAPI app on :8000
+#   db   → PostgreSQL 16 on :5432 (internal only)
+# =============================================================
+
+services:
+
+  # ── FastAPI application ──────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Pin to the runtime stage so the builder layer is never
+      # accidentally shipped as the final image
+      target: runtime
+    container_name: chatpdf_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+
+    # Load secrets from .env — never hard-code them here.
+    # DATABASE_URL is overridden below to point at the 'db' service
+    # rather than localhost, because inside Docker the host is 'db'.
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-chatpdf}
+
+    # Persistent volumes so uploads and Qdrant data survive
+    # container restarts and re-deployments.
+    volumes:
+      - uploads_data:/app/uploads
+      - qdrant_data:/app/qdrant_storage
+
+    # Don't start until PostgreSQL is accepting connections.
+    depends_on:
+      db:
+        condition: service_healthy
+
+    networks:
+      - chatpdf_net
+
+    # Resource guardrails — tune to your host.
+    # Prevents the container from starving other services.
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+        reservations:
+          memory: 512M
+
+  # ── PostgreSQL ───────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: chatpdf_db
+    restart: unless-stopped
+
+    # Credentials come from your .env file
+    environment:
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:       ${POSTGRES_DB:-chatpdf}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # Expose only on 127.0.0.1 so the DB port is never reachable
+    # from the public internet, only from the api service.
+    ports:
+      - "127.0.0.1:5432:5432"
+
+    healthcheck:
+      test:     ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-chatpdf}"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+    networks:
+      - chatpdf_net
+
+# ── Named volumes ────────────────────────────────────────────
+# Docker manages these; they persist across `docker compose down`
+# and are destroyed only with `docker compose down -v`.
+volumes:
+  postgres_data:
+  uploads_data:
+  qdrant_data:
+
+# ── Network ──────────────────────────────────────────────────
+# An isolated bridge network so services can reach each other
+# by name (e.g. 'db') while being invisible to other containers.
+networks:
+  chatpdf_net:
+    driver: bridge
