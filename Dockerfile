@@ -25,8 +25,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # while fastembed downloads the model at runtime.
 RUN mkdir -p /install/fastembed_cache && chmod -R 777 /install/fastembed_cache
 
-RUN FASTEMBED_CACHE_PATH=/install/fastembed_cache \
-    python -c "from fastembed import SparseTextEmbedding; SparseTextEmbedding('Qdrant/bm25')"
+# RUN FASTEMBED_CACHE_PATH=/install/fastembed_cache \
+#     python -c "from fastembed import SparseTextEmbedding; SparseTextEmbedding('Qdrant/bm25')"
 
 # ─────────────────────────────────────────────────────────────
 # Stage 2 · runtime
