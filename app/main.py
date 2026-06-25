@@ -25,9 +25,18 @@ from data_preprocessing.vector_db import (
 
 # ===== LLM =====
 from llm.ask_llm import generation
-
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(tags=["Main APP"])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],        # tighten to your frontend URL in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(login.router)
 app.include_router(users.router)
 
@@ -79,7 +88,6 @@ async def upload_file(
 
         # 3) Split into chunks
         nodes = split_markdown_document(documents)
-
         if not nodes:
             raise HTTPException(
                 status_code=400,
@@ -175,7 +183,7 @@ def retrieval_and_generation(
             query=question.query,
             doc_context=doc_context
         )
-
+        print(f"Retrieved Context: {doc_context} \n\n Generated Answer: {answer}")
         return {
             "query": question.query,
             "document_id": question.document_id,

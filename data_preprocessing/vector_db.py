@@ -10,8 +10,8 @@ from functools import lru_cache
 load_dotenv()
 
 # Map Gemini credentials cleanly
-if "GEMINI_API_KEY" in os.environ:
-    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+if "GEMINI_API_KEY" not in os.environ:
+    os.environ["GEMINI_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
 
 @lru_cache(maxsize=1)
@@ -23,24 +23,25 @@ def get_vector_store():
 
     # 2. Setup Qdrant Client 
     client = QdrantClient(path="./qdrant_storage") 
-    collection_name = "chatypdf_collection"
+    collection_name = "chatypdf_"
 
+    if not client.collection_exists(collection_name=collection_name):
     # Fixed: Explicitly provision the collection with structural layout for both dimensions
-    client.create_collection(
-        collection_name=collection_name,
-        # force_recreate = True,
-        vectors_config={
-            "dense": models.VectorParams(
-                size=3072,  # size of models/embedding-001
-                distance=models.Distance.COSINE
-            )
-        },
-        sparse_vectors_config={
-            "sparse": models.SparseVectorParams(
-                index=models.SparseIndexParams(on_disk=False)
-            )
-        }
-    )
+        client.create_collection(
+            collection_name=collection_name,
+            # force_recreate = True,
+            vectors_config={
+                "dense": models.VectorParams(
+                    size=3072,  # size of models/embedding-001
+                    distance=models.Distance.COSINE
+                )
+            },
+            sparse_vectors_config={
+                "sparse": models.SparseVectorParams(
+                    index=models.SparseIndexParams(on_disk=False)
+                )
+            }
+        )
 
     # 3. Configure Vector Store with Proper Hybrid Integration
     return QdrantVectorStore(
