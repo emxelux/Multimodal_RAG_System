@@ -22,7 +22,10 @@ def get_vector_store():
     sparse_embeddings = FastEmbedSparse(model_name="Qdrant/bm25")
 
     # 2. Setup Qdrant Client 
-    client = QdrantClient(path="./qdrant_storage") 
+    client = QdrantClient(
+        url = os.getenv("QDRANT_ENDPOINT"),
+        api_key=os.getenv("QDRANT_API_KEY")
+    ) 
     collection_name = "chatypdf_"
 
     if not client.collection_exists(collection_name=collection_name):
