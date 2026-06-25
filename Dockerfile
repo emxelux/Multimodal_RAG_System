@@ -15,21 +15,10 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Create all necessary production directories as root
-# .cache: for HuggingFace models
-# document_files: for user uploads
-# assets: for extracted images from PDFs
-RUN mkdir -p /app/.cache/huggingface /app/document_files /app/assets && \
-    chown -R user:user /app
 
 # Switch to non-root for security
 USER user
 
-# Production Environment Variables
-ENV PYTHONPATH=/app
-ENV PATH="/home/user/.local/bin:${PATH}"
-ENV HF_HOME=/app/.cache/huggingface
-ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
 
 # Ensure the app code is owned by the user
 COPY --chown=user:user . /app
