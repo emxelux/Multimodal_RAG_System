@@ -133,7 +133,6 @@ async def upload_file(
         new_doc = Document(
             id=document_id,
             document_hash=hashed_content,
-            file_path=str(saved_path),
             user_id=current_user.id
         )
         # Handle chunk_count dynamically if it exists on your Document model
@@ -146,7 +145,6 @@ async def upload_file(
         return {
             "status": "Successfully indexed and processed document",
             "document_id": document_id,
-            "saved_path": str(saved_path),
             "chunks_indexed": len(nodes),
             "duplicated": False
         }
