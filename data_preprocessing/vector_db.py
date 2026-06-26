@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-# Fixed: Imported FastEmbedSparse and RetrievalMode cleanly from langchain_qdrant
+from qdrant_client.models import PayloadSchemaType
 from langchain_qdrant import QdrantVectorStore, RetrievalMode, FastEmbedSparse
 from langchain_cohere import CohereRerank
 from qdrant_client import QdrantClient, models
@@ -45,6 +45,11 @@ def get_vector_store():
                 )
             }
         )
+        client.create_payload_index(
+    collection_name=collection_name,
+    field_name="metadata.user_id", # Or just "user_id", check your payload structural nest
+    field_schema=PayloadSchemaType.KEYWORD,
+)
 
     # 3. Configure Vector Store with Proper Hybrid Integration
     return QdrantVectorStore(
