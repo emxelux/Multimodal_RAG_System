@@ -100,7 +100,6 @@ async def upload_file(
             return {
                 "status": "Document already exists and is indexed",
                 "document_id": existing_file.id,
-                "saved_path": existing_file.file_path,
                 "chunks_indexed": getattr(existing_file, "chunk_count", 0),  # Falls back safely if not explicitly in your schema
                 "duplicated": True
             }
