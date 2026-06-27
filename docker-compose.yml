@@ -37,7 +37,7 @@ services:
     # container restarts and re-deployments.
     volumes:
       - uploads_data:/app/uploads
-      - qdrant_data:/app/qdrant_storage
+  
 
     # Don't start until PostgreSQL is accepting connections.
     depends_on:
