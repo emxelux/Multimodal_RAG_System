@@ -4,6 +4,7 @@ from pathlib import Path
 from app.routes import login, users
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
 
+from dotenv import load_dotenv
 # ===== Auth / DB imports =====
 from databases.database import get_db
 from sqlalchemy.orm import Session
@@ -37,6 +38,7 @@ from databases import models  # Make sure this imports the file where your "User
 # This line tells SQLAlchemy to physically create tables in Postgres if they don't exist
 models.Base.metadata.create_all(bind=engine)
 
+load_dotenv()
 
 app = FastAPI(tags=["Main APP"])
 
