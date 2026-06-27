@@ -25,7 +25,7 @@ def get_vector_store():
         url=os.getenv("QDRANT_ENDPOINT"),
         api_key=os.getenv("QDRANT_API_KEY")
     ) 
-    collection_name = "chatypdf_"
+    collection_name = "chatmypdf_"
 
     if not client.collection_exists(collection_name=collection_name):
         # Explicitly provision the collection with structural layout for both dimensions
@@ -33,7 +33,7 @@ def get_vector_store():
             collection_name=collection_name,
             vectors_config={
                 "dense": models.VectorParams(
-                    size=768,  # Correct structural size for gemini-embedding-001
+                    size=3072,
                     distance=models.Distance.COSINE
                 )
             },
@@ -114,7 +114,6 @@ def rerank_results(query, documents, top_n=3):
     reranker = CohereRerank(model="rerank-v3.5", top_n=top_n)
     reranked_docs = reranker.compress_documents(documents=documents, query=query)
     return reranked_docs
-
 
 
 

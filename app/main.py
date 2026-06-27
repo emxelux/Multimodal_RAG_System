@@ -20,10 +20,12 @@ from data_preprocessing.chunking import split_markdown_document
 
 # ===== Vector DB / Retrieval =====
 from data_preprocessing.vector_db import (
+    get_vector_store,
     upsert_split_documents,
     retrieve_context,
     rerank_results
 )
+import os
 
 # ===== LLM =====
 from llm.ask_llm import generation
@@ -38,9 +40,12 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(tags=["Main APP"])
 
+os.environ["HF_TOKEN"] = os.getenv("HF_TOKEN")
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # tighten to your frontend URL in production
+    allow_origins=["*"],       
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -110,6 +115,7 @@ async def upload_file(
 
         # Build LangChain Documents
         documents = build_documents(json_result, original_filename)
+        get_vector_store()
 
         # Split into chunks
         nodes = split_markdown_document(documents)
