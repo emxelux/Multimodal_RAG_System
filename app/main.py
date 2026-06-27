@@ -227,7 +227,7 @@ def retrieval_and_generation(
             query=question.query,
             doc_context=doc_context
         )
-        print(f"Retrieved Context: {doc_context} \n\n Generated Answer: {answer}")
+        print(answer)
         return {
             "query": question.query,
             "document_id": question.document_id,
