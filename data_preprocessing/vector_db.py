@@ -113,6 +113,8 @@ def rerank_results(query, documents, top_n=3):
         
     reranker = CohereRerank(model="rerank-v3.5", top_n=top_n)
     reranked_docs = reranker.compress_documents(documents=documents, query=query)
+    for docs in reranked_docs:
+        print(docs)
     return reranked_docs
 
 
