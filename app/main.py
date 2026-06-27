@@ -21,7 +21,6 @@ from data_preprocessing.chunking import split_markdown_document
 
 # ===== Vector DB / Retrieval =====
 from data_preprocessing.vector_db import (
-    get_vector_store,
     upsert_split_documents,
     retrieve_context,
     rerank_results
@@ -117,8 +116,6 @@ async def upload_file(
 
         # Build LangChain Documents
         documents = build_documents(json_result, original_filename)
-        get_vector_store()
-
         # Split into chunks
         nodes = split_markdown_document(documents)
         if not nodes:
