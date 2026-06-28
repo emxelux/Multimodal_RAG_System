@@ -3,7 +3,7 @@ CONTEXT is a markdown code.
 
 Rules:
 - Answer ONLY from the CONTEXT. Do not use outside knowledge.
-- Your answer must be markdown to render tables(to keep captions and citations) and Headers and texts cleanly.
+- Your answer must be in markdown code to render tables(to keep captions and citations) and Headers and texts cleanly.
 - If the answer is not present in the CONTEXT, reply exactly: "The answer to your question is not found in the uploaded document."
 - Do not include reasoning like "Since the question is not in the document...".
 - Give a direct, clear answer. Do not restate the question.
