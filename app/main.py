@@ -3,6 +3,8 @@ import shutil
 from pathlib import Path
 from app.routes import login, users
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
+import json
 
 from dotenv import load_dotenv
 # ===== Auth / DB imports =====
@@ -28,7 +30,7 @@ from data_preprocessing.vector_db import (
 import os
 
 # ===== LLM =====
-from llm.ask_llm import generation
+from llm.ask_llm import generation, stream_generation
 from fastapi.middleware.cors import CORSMiddleware
 
 from databases.database import engine
@@ -50,6 +52,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 app.include_router(login.router)
@@ -168,75 +171,44 @@ def retrieval_and_generation(
     question: QueryIn,
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Ask a question against one uploaded document.
-    Frontend must send:
-    {
-        "query": "...",
-        "document_id": "..."
-    }
-    """
-    try:
-        # 1) Retrieve chunks only from this user's selected document
-        raw_results = retrieve_context(
-            query=question.query,
-            user_id=str(current_user.id),
-            source_document=question.document_id,
-        )
+    # ── Step 1: retrieval + reranking (synchronous, happens before streaming) ──
+    # Your existing retrieval code goes here unchanged:
+    results      = retrieve_context(question.query, question.document_id, current_user.id)
+    final_context = rerank_results(question.query, results)
 
-        if not raw_results:
-            return {
-                "query": question.query,
-                "document_id": question.document_id,
-                "answer": "I couldn't find relevant information in that document.",
-                "citations": [],
-                "results_count": 0
-            }
+    doc_context = "\n\n".join([
+        f"[Chunk {i+1}] Source: {r.get('source_name','')}, Page: {r.get('page','?')}\n{r.get('content','')}"
+        for i, r in enumerate(final_context)
+    ])
 
-        print(f"\nRetrieved {len(raw_results)} documents from vector search.")
-
-        # 2) Rerank retrieved chunks
-        final_context = rerank_results(question.query, raw_results)
-
-        # 3) Build LLM context string with citation-friendly chunk labels
-        context_blocks = []
-        citations = []
-
-        for idx, doc in enumerate(final_context):
-            source_name = doc.metadata.get("source_name")
-            page = doc.metadata.get("page")
-
-            block = (
-                f"[Chunk {idx + 1}]\n"
-                f"Source: {source_name}\n"
-                f"Page: {page}\n"
-                f"Content:\n{doc.page_content}"
-            )
-            context_blocks.append(block)
-
-            citations.append({
-                "chunk_label": f"Chunk {idx + 1}",
-                "source_name": source_name,
-                "page": page,
-            })
-
-        doc_context = "\n\n---\n\n".join(context_blocks)
-
-        # 4) Generate final answer
-        answer = generation(
-            query=question.query,
-            doc_context=doc_context
-        )
-        print(answer)
-        return {
-            "query": question.query,
-            "document_id": question.document_id,
-            "answer": answer,
-            "citations": citations,
-            "results_count": len(final_context)
+    citations = [
+        {
+            "chunk_label": f"Chunk {i+1}",
+            "source_name": r.get("source_name", ""),
+            "page": r.get("page")
         }
+        for i, r in enumerate(final_context)
+    ]
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+    # ── Step 2: stream the LLM response as Server-Sent Events ────────────────
+    def event_stream():
+        # Send citations FIRST so the frontend can render them immediately
+        yield f"data: {json.dumps({'type': 'citations', 'citations': citations, 'results_count': len(final_context)})}\n\n"
+
+        # Stream LLM tokens
+        for token in stream_generation(query=question.query, doc_context=doc_context):
+            yield f"data: {json.dumps({'type': 'token', 'token': token})}\n\n"
+
+        # Signal completion
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",   # disables Nginx/Render response buffering
+            "Connection": "keep-alive",
+        }
+    )
+
