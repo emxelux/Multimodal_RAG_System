@@ -31,6 +31,7 @@ class TokenData(BaseModel):
 class QueryIn(BaseModel):
     query:str
     document_id:str
+    history: Optional[list[dict[str, str]]] = None
 
 
 class DocumentIn(BaseModel):
