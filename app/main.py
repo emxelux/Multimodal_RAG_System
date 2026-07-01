@@ -175,7 +175,7 @@ def retrieval_and_generation(
     current_user: User = Depends(get_current_user)
 ):
     # ── Step 1: retrieval + reranking (synchronous, happens before streaming) ──
-    results = retrieve_context(question.query, question.document_id, current_user.id)
+    results = retrieve_context(question.query, current_user.id, question.document_id)
     final_context = rerank_results(question.query, results)
 
     doc_context = "\n\n".join([
