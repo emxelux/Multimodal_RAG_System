@@ -1,6 +1,7 @@
 import uuid
 import shutil
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 from app.routes import login, users
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -62,6 +63,8 @@ app.include_router(users.router)
 # Directory to save uploaded files
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+
+CHAT_HISTORY_STORE: Dict[Tuple[str, str], List[Dict[str, str]]] = {}
 
 
 @app.get("/")
@@ -172,8 +175,7 @@ def retrieval_and_generation(
     current_user: User = Depends(get_current_user)
 ):
     # ── Step 1: retrieval + reranking (synchronous, happens before streaming) ──
-    # Your existing retrieval code goes here unchanged:
-    results      = retrieve_context(question.query, question.document_id, current_user.id)
+    results = retrieve_context(question.query, question.document_id, current_user.id)
     final_context = rerank_results(question.query, results)
 
     doc_context = "\n\n".join([
@@ -190,16 +192,27 @@ def retrieval_and_generation(
         for i, r in enumerate(final_context)
     ]
 
-    # ── Step 2: stream the LLM response as Server-Sent Events ────────────────
+    history_key = (str(current_user.id), question.document_id)
+    prior_history = question.history or CHAT_HISTORY_STORE.get(history_key, [])
+
     def event_stream():
-        # Send citations FIRST so the frontend can render them immediately
         yield f"data: {json.dumps({'type': 'citations', 'citations': citations, 'results_count': len(final_context)})}\n\n"
 
-        # Stream LLM tokens
-        for token in stream_generation(query=question.query, doc_context=doc_context):
+        response_parts: List[str] = []
+        for token in stream_generation(
+            query=question.query,
+            doc_context=doc_context,
+            history=prior_history,
+        ):
+            response_parts.append(token)
             yield f"data: {json.dumps({'type': 'token', 'token': token})}\n\n"
 
-        # Signal completion
+        assistant_reply = "".join(response_parts)
+        updated_history = list(prior_history)
+        updated_history.append({"role": "user", "content": question.query})
+        updated_history.append({"role": "assistant", "content": assistant_reply})
+        CHAT_HISTORY_STORE[history_key] = updated_history
+
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
@@ -207,7 +220,7 @@ def retrieval_and_generation(
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",   # disables Nginx/Render response buffering
+            "X-Accel-Buffering": "no",
             "Connection": "keep-alive",
         }
     )
