@@ -1,7 +1,7 @@
 import uuid
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from app.routes import login, users
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -65,6 +65,46 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 CHAT_HISTORY_STORE: Dict[Tuple[str, str], List[Dict[str, str]]] = {}
+
+
+# =========================================================
+# SAFE FIELD ACCESSOR
+# =========================================================
+def _field(r: Any, key: str, default: Any = None) -> Any:
+    """
+    Safely pull a field off a retrieval result, regardless of whether
+    `r` is a plain dict, a LangChain-style Document (page_content +
+    metadata), or some other Pydantic/object model.
+
+    This fixes: AttributeError: 'Document' object has no attribute 'get'
+    which happened because retrieve_context()/rerank_results() return
+    Document objects, not dicts, but the endpoint assumed dicts.
+    """
+    # 1) Plain dict
+    if isinstance(r, dict):
+        return r.get(key, default)
+
+    # 2) LangChain-style Document: metadata dict + page_content
+    metadata = getattr(r, "metadata", None)
+    if key == "content":
+        page_content = getattr(r, "page_content", None)
+        if page_content is not None:
+            return page_content
+    if isinstance(metadata, dict) and key in metadata:
+        return metadata[key]
+
+    # 3) Direct attribute on the object itself (custom Pydantic model)
+    if hasattr(r, key):
+        return getattr(r, key)
+
+    # 4) Pydantic model_dump() fallback (covers nested/aliased fields)
+    if hasattr(r, "model_dump"):
+        try:
+            return r.model_dump().get(key, default)
+        except Exception:
+            pass
+
+    return default
 
 
 @app.get("/")
@@ -175,19 +215,22 @@ def retrieval_and_generation(
     current_user: User = Depends(get_current_user)
 ):
     # ── Step 1: retrieval + reranking (synchronous, happens before streaming) ──
-    results = retrieve_context(question.query, current_user.id, question.document_id)
-    final_context = rerank_results(question.query, results)
+    try:
+        results = retrieve_context(question.query, current_user.id, question.document_id)
+        final_context = rerank_results(question.query, results)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Retrieval failed: {str(e)}")
 
     doc_context = "\n\n".join([
-        f"[Chunk {i+1}] Source: {r.get('source_name','')}, Page: {r.get('page','?')}\n{r.get('content','')}"
+        f"[Chunk {i+1}] Source: {_field(r, 'source_name', '')}, Page: {_field(r, 'page', '?')}\n{_field(r, 'content', '')}"
         for i, r in enumerate(final_context)
     ])
 
     citations = [
         {
             "chunk_label": f"Chunk {i+1}",
-            "source_name": r.get("source_name", ""),
-            "page": r.get("page")
+            "source_name": _field(r, "source_name", ""),
+            "page": _field(r, "page")
         }
         for i, r in enumerate(final_context)
     ]
@@ -224,4 +267,3 @@ def retrieval_and_generation(
             "Connection": "keep-alive",
         }
     )
-
