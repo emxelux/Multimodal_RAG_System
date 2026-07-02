@@ -49,7 +49,7 @@ os.environ["HF_TOKEN"] = os.getenv("HF_TOKEN")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],       
+    allow_origins=["https://chatmypdf.netlify.app"],       
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
