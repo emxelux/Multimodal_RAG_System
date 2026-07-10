@@ -6,19 +6,33 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 
-def build_history_messages(history: Optional[list[dict]] = None):
+def build_history_messages(history: Optional[list] = None):
     """Convert prior turns into LangChain message objects for the prompt."""
     history = history or []
     messages = []
 
     for turn in history:
-        role = str(turn.get("role", "")).lower()
-        content = turn.get("content") or turn.get("text") or ""
+
+        if isinstance(turn, (list, tuple)):
+            if len(turn) < 2:
+                continue
+            role = str(turn[0]).lower()
+            content = turn[1]
+            
+
+        elif isinstance(turn, dict):
+            role = str(turn.get("role", "")).lower()
+            content = turn.get("content") or turn.get("text") or ""
+            
+        else:
+
+            continue
 
         if not content:
             continue
 
-        if role in {"assistant", "ai"}:
+
+        if role in {"assistant", "ai", "model"}:
             messages.append(AIMessage(content=content))
         else:
             messages.append(HumanMessage(content=content))
