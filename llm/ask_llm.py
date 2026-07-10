@@ -32,7 +32,7 @@ def stream_generation(query: str, doc_context: str, history: Optional[list[dict]
     Call this inside a FastAPI StreamingResponse.
     """
     model = init_chat_model(
-        model="gemini-2.0-flash",
+        model="gemini-3.5-flash",
         model_provider="google_genai"
     )
 

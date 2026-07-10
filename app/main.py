@@ -236,7 +236,7 @@ def retrieval_and_generation(
     ]
 
     history_key = (str(current_user.id), question.document_id)
-    prior_history = question.history or CHAT_HISTORY_STORE.get(history_key, [])
+    prior_history = question.history or CHAT_HISTORY_STORE.get(history_key, []), 
 
     def event_stream():
         yield f"data: {json.dumps({'type': 'citations', 'citations': citations, 'results_count': len(final_context)})}\n\n"
