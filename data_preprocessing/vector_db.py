@@ -7,6 +7,7 @@ from langchain_cohere import CohereRerank
 from qdrant_client import QdrantClient, models
 from functools import lru_cache
 
+
 load_dotenv()
 
 # Fix credential fallback string formatting error
@@ -23,7 +24,8 @@ def get_vector_store():
     # 2. Setup Qdrant Client 
     client = QdrantClient(
         url=os.getenv("QDRANT_ENDPOINT"),
-        api_key=os.getenv("QDRANT_API_KEY")
+        api_key=os.getenv("QDRANT_API_KEY"),
+        timeout=120
     ) 
     collection_name = "chatmypdf_"
 
