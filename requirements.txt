@@ -28,10 +28,12 @@ langchain-text-splitters>=0.3.0
 langchain-google-genai>=2.0.0  # GoogleGenerativeAIEmbeddings + Gemini LLM
 langchain-qdrant>=0.2.0        # QdrantVectorStore, RetrievalMode, FastEmbedSparse
 langchain-cohere>=0.3.0        # CohereRerank
+langchain-huggingface
 
 # ── Vector database ───────────────────────────────────────────
 qdrant-client>=1.9.0
 fastembed>=0.3.0               # BM25 sparse embeddings (Qdrant/bm25 model)
+huggingface-hub
 
 # ── PDF parsing ───────────────────────────────────────────────
 llama-parse>=0.5.0             # LlamaParse cloud API for high-quality PDF ingestion
