@@ -107,9 +107,4 @@ HEALTHCHECK \
 # cache instance and fight over the same SQLite file, causing data
 # corruption. Keep --workers 1 until you migrate to Qdrant Cloud,
 # at which point you can safely raise this to (2 × CPU cores + 1).
-CMD ["uvicorn", "app.main:app", \
-     "--host",               "0.0.0.0", \
-     "--port",               "8000", \
-     "--workers",            "1", \
-     "--timeout-keep-alive", "120", \
-     "--log-level",          "info"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
