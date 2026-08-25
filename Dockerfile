@@ -2,7 +2,6 @@ FROM python:3.13-slim AS builder
 
 WORKDIR /build
 
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -28,17 +27,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+
 RUN groupadd --gid 1001 appgroup && \
     useradd  --uid 1001 --gid appgroup \
              --shell /bin/bash \
              --create-home appuser
 
+
 COPY --from=builder /install                       /usr/local
 COPY --from=builder /install/fastembed_cache       /app/.cache/fastembed
 
-
 COPY --chown=appuser:appgroup . /app
-
 
 RUN mkdir -p \
         /app/uploads \
@@ -49,8 +48,8 @@ RUN mkdir -p \
 
 USER appuser
 
+
 ENV PYTHONPATH=/app \
-    # Flush stdout/stderr immediately — essential for log visibility
     PYTHONUNBUFFERED=1 \
     # Don't write .pyc files inside the container
     PYTHONDONTWRITEBYTECODE=1 \
@@ -62,7 +61,7 @@ ENV PYTHONPATH=/app \
 
 EXPOSE 8000
 
-
+HEALTHCHECK \
     --interval=30s \
     --timeout=10s \
     --start-period=30s \
