@@ -1,16 +1,4 @@
-# =============================================================
-# ChatPDF Pro — Python dependencies
-#
-# Generated from actual imports in the codebase.
-# The previous requirements.txt included the full llama-index
-# suite (~800 MB) even though the code uses LangChain exclusively.
-# This file cuts install time by ~60%.
-#
-# To regenerate a fully pinned lockfile after testing:
-#   pip freeze > requirements.lock
-# =============================================================
 
-# ── API framework ─────────────────────────────────────────────
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 python-multipart>=0.0.12       # required for UploadFile / File(...)

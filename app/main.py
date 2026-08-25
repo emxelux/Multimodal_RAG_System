@@ -6,7 +6,7 @@ from app.routes import login, users
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 import json
-
+import logging
 from dotenv import load_dotenv
 # ===== Auth / DB imports =====
 from databases.database import get_db
@@ -37,10 +37,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from databases.database import engine
 from databases import models  # Make sure this imports the file where your "User" model lives
 
+logging.basicConfig(
+    filename='app.log',
+    filemode='w',  # 'w' to overwrite every run; 'a' to append (default)
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 # This line tells SQLAlchemy to physically create tables in Postgres if they don't exist
 models.Base.metadata.create_all(bind=engine)
 
 load_dotenv()
+
+
 
 app = FastAPI(tags=["Main APP"])
 
@@ -128,12 +136,13 @@ async def upload_file(
     """
     try:
         if not file.filename:
+            logging.error("No File name Provided")
             raise HTTPException(status_code=400, detail="No file name provided.")
 
         original_filename = file.filename
         document_id = str(uuid.uuid4())
 
-        # 1) Temporary save to run hash_pdf on the physical file
+       
         unique_name = f"{current_user.id}_{document_id}_{original_filename}"
         saved_path = UPLOAD_DIR / unique_name
 
@@ -141,10 +150,12 @@ async def upload_file(
             shutil.copyfileobj(file.file, buffer)
 
         # 2) Compute hash and check for duplicates in the DB
+        logging.info("Hashing pdf content")
         hashed_content = hash_pdf(saved_path)
         existing_file = db.query(Document).filter(Document.document_hash == hashed_content).first()
         
         if existing_file:
+            logging.info("PDF ALREADY EXISTs")
             # Clean up the file we just saved to avoid redundant disk usage
             if saved_path.exists():
                 saved_path.unlink()
@@ -159,38 +170,46 @@ async def upload_file(
         # 3) Process new document if no duplicate is found
         # Parse PDF
         json_result = ingest_pdf(file_path=str(saved_path))
+        if not json_result:
+            logging.error("THERE IS NO JSON RESULT CREATED")
+            
+        
 
         # Build LangChain Documents
         documents = build_documents(json_result, original_filename)
+        logging.info("DOCUMENT OBJECT BUILT SUCCESSFULLY")
         # Split into chunks
         nodes = split_markdown_document(documents)
         if not nodes:
+            logging.error("NO CHUNKS WERE CREATED SUCCESSFULLY")
             if saved_path.exists():
                 saved_path.unlink()
             raise HTTPException(
                 status_code=400,
                 detail="No chunks were created from the uploaded document."
             )
-
+        logging.info(f"{len(nodes)} NODES CREATED SUCCESSFULY")
         # Upsert chunks into vector store
         upsert_split_documents(
             markdown_nodes=nodes,
             user_id=str(current_user.id),
             source_document=document_id
         )
-
+        logging.info("DOCUMENT UPSERTED TO DATABASE SUCCESSFULLY")
         # 4) Save metadata & hash record to relational DB
         new_doc = Document(
             id=document_id,
             document_hash=hashed_content,
             user_id=current_user.id
         )
+        
         # Handle chunk_count dynamically if it exists on your Document model
         if hasattr(new_doc, 'chunk_count'):
             new_doc.chunk_count = len(nodes)
             
         db.add(new_doc)
         db.commit()
+        logging.info("NEW DOCUMENT ADDED TO DATABASE SUCCESSFULLY")
 
         return {
             "status": "Successfully indexed and processed document",
@@ -199,10 +218,10 @@ async def upload_file(
             "duplicated": False
         }
 
-    except HTTPException:
-        raise
+    
     except Exception as e:
         db.rollback()
+        logging.error(f"THEREIS AN ERROR {e}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
@@ -216,8 +235,12 @@ def retrieval_and_generation(
 ):
     # ── Step 1: retrieval + reranking (synchronous, happens before streaming) ──
     try:
+        logging.info("QUERYING THE VECTOR DATABASE....")
         results = retrieve_context(question.query, current_user.id, question.document_id)
+        logging.info(f"/n/n=============/n RESULTS: {results}/n/n ==================")
         final_context = rerank_results(question.query, results)
+
+        logging.info(f"====================== Reranked Results =====================\n\n {final_context}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Retrieval failed: {str(e)}")
 

@@ -1,45 +1,41 @@
 import os
 from langchain_core.documents import Document
+from loguru import logger
+from dotenv import load_dotenv
 
-try:
-    from dotenv import load_dotenv
-except ModuleNotFoundError:
-    load_dotenv = None
+load_dotenv()
+
+
 
 try:
     from llama_parse import LlamaParse
 except ModuleNotFoundError:
     LlamaParse = None
 
-if load_dotenv is not None:
-    load_dotenv()
 
 llama_api_key = os.getenv("LLAMA_API_KEY")
 if llama_api_key:
     os.environ["LLAMA_API_KEY"] = llama_api_key
 
 def ingest_pdf(file_path:str):
-    if LlamaParse is None:
-        raise ImportError(
-            "llama_parse is not installed. Install project dependencies or use the local sample JSON fixture."
-        )
-
+    
     parser = LlamaParse(
         api_key=llama_api_key,
         result_type="json"
     )
     json_result = parser.get_json_result(file_path)
+    if json_result:
+        logger.info("JSON CREATED SUCCESFFULLY FROM DOCUMENTS")
     return json_result
 
 
+# print(ingest_pdf("document_files/MultimodalMachineLearning.pdf"))
 
 
 def build_documents(parsed_json, source_name):
     documents = []
-
-    # 1. Guard clause: Check if parsed_json is empty, None, or not a list
-    if not parsed_json or not isinstance(parsed_json, list):
-        print(f"Warning: parsed_json is empty or invalid for {source_name}")
+    if not parsed_json: #or not isinstance(parsed_json, list):
+        logger.info(f"Warning: parsed_json is empty or invalid for {source_name}")
         return documents
 
     # 2. Safe extraction using .get() just in case "pages" is missing
@@ -61,15 +57,3 @@ def build_documents(parsed_json, source_name):
         )
 
     return documents
-
-
-# file_path = "./document_files/MultimodalMachineLearning.pdf"
-
-# json_result = ingest_pdf(file_path)
-
-# documents = build_documents(
-#     json_result,
-#     source_name=os.path.basename(file_path)
-# )
-
-# print(documents[2])

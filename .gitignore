@@ -17,3 +17,6 @@ output1.json
 document_files
 document_files/
 uploads/
+/qdrant_storage
+./qdrant_storage
+app.log
