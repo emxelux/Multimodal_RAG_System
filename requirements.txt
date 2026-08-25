@@ -40,3 +40,4 @@ llama-parse>=0.5.0             # LlamaParse cloud API for high-quality PDF inges
 
 # ── Utilities ─────────────────────────────────────────────────
 loguru>=0.7.0                  # structured logging (replace bare print() calls)
+sentence_transformers
