@@ -1,35 +1,35 @@
-import uuid
-import shutil
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
-from app.routes import login, users
+# import uuid
+# import shutil
+# from pathlib import Path
+# from typing import Dict, List, Optional, Tuple, Any
+# from app.routes import login, users
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
-import json
-import logging
-from dotenv import load_dotenv
-# ===== Auth / DB imports =====
-from databases.database import get_db
-from sqlalchemy.orm import Session
-from databases.utils import hash_pdf
-from databases.oauth2 import get_current_user
-from databases.models import User, Document
+# from fastapi.responses import StreamingResponse
+# import json
+# import logging
+# from dotenv import load_dotenv
+# # ===== Auth / DB imports =====
+# from databases.database import get_db
+# from sqlalchemy.orm import Session
+# from databases.utils import hash_pdf
+# from databases.oauth2 import get_current_user
+# from databases.models import User, Document
 
-# ===== Schemas =====
-from databases.schemas import QueryIn, DocumentIn
+# # ===== Schemas =====
+# from databases.schemas import QueryIn, DocumentIn
 
-# ===== Ingestion / Chunking =====
-from data_preprocessing.ingest import ingest_pdf, build_documents
-from data_preprocessing.chunking import split_markdown_document
+# # ===== Ingestion / Chunking =====
+# from data_preprocessing.ingest import ingest_pdf, build_documents
+# from data_preprocessing.chunking import split_markdown_document
 
-import os
+# import os
 
-# ===== LLM =====
-from llm.ask_llm import generation, stream_generation
+# # ===== LLM =====
+# from llm.ask_llm import generation, stream_generation
 from fastapi.middleware.cors import CORSMiddleware
 
-from databases.database import engine
-from databases import models  # Make sure this imports the file where your "User" model lives
+# from databases.database import engine
+# from databases import models  # Make sure this imports the file where your "User" model lives
 
 logging.basicConfig(
     filename='app.log',
@@ -58,8 +58,8 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
-app.include_router(login.router)
-app.include_router(users.router)
+# app.include_router(login.router)
+# app.include_router(users.router)
 
 
 # Directory to save uploaded files
@@ -83,30 +83,30 @@ def _field(r: Any, key: str, default: Any = None) -> Any:
     Document objects, not dicts, but the endpoint assumed dicts.
     """
     # 1) Plain dict
-    if isinstance(r, dict):
-        return r.get(key, default)
+    # if isinstance(r, dict):
+    #     return r.get(key, default)
 
-    # 2) LangChain-style Document: metadata dict + page_content
-    metadata = getattr(r, "metadata", None)
-    if key == "content":
-        page_content = getattr(r, "page_content", None)
-        if page_content is not None:
-            return page_content
-    if isinstance(metadata, dict) and key in metadata:
-        return metadata[key]
+    # # 2) LangChain-style Document: metadata dict + page_content
+    # metadata = getattr(r, "metadata", None)
+    # if key == "content":
+    #     page_content = getattr(r, "page_content", None)
+    #     if page_content is not None:
+    #         return page_content
+    # if isinstance(metadata, dict) and key in metadata:
+    #     return metadata[key]
 
-    # 3) Direct attribute on the object itself (custom Pydantic model)
-    if hasattr(r, key):
-        return getattr(r, key)
+    # # 3) Direct attribute on the object itself (custom Pydantic model)
+    # if hasattr(r, key):
+    #     return getattr(r, key)
 
-    # 4) Pydantic model_dump() fallback (covers nested/aliased fields)
-    if hasattr(r, "model_dump"):
-        try:
-            return r.model_dump().get(key, default)
-        except Exception:
-            pass
+    # # 4) Pydantic model_dump() fallback (covers nested/aliased fields)
+    # if hasattr(r, "model_dump"):
+    #     try:
+    #         return r.model_dump().get(key, default)
+    #     except Exception:
+    #         pass
 
-    return default
+    # return default
 
 
 @app.get("/")
