@@ -6,7 +6,7 @@
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
 # from fastapi.responses import StreamingResponse
 # import json
-# import logging
+import logging
 # from dotenv import load_dotenv
 # # ===== Auth / DB imports =====
 # from databases.database import get_db
