@@ -178,6 +178,8 @@ async def upload_file(
 
         # Build LangChain Documents
         documents = build_documents(json_result, original_filename)
+        if not documents:
+            logging.info("COULD NOT SUCCESSFULLY CREATE DOCUMENT OBJECT")
         logging.info("DOCUMENT OBJECT BUILT SUCCESSFULLY")
         # Split into chunks
         nodes = split_markdown_document(documents)
@@ -236,6 +238,7 @@ def retrieval_and_generation(
 ):
     
     from llm.ask_llm import generation, stream_generation
+
     from data_preprocessing.vector_db import (
     retrieve_context,
     rerank_results
@@ -267,7 +270,7 @@ def retrieval_and_generation(
     ]
 
     history_key = (str(current_user.id), question.document_id)
-    prior_history = question.history or CHAT_HISTORY_STORE.get(history_key, []), 
+    prior_history = question.history or CHAT_HISTORY_STORE.get(history_key, [])
 
     def event_stream():
         yield f"data: {json.dumps({'type': 'citations', 'citations': citations, 'results_count': len(final_context)})}\n\n"

@@ -2,9 +2,9 @@ import os
 import logging
 from functools import lru_cache
 from dotenv import load_dotenv
-# from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 
-from sentence_transformers import SentenceTransformer
+
+# from sentence_transformers import SentenceTransformer
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_qdrant import QdrantVectorStore, RetrievalMode, FastEmbedSparse
 from langchain_cohere import CohereRerank
@@ -16,6 +16,7 @@ from qdrant_client.models import PayloadSchemaType
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
 
 
 
@@ -95,9 +96,15 @@ def upsert_split_documents(markdown_nodes, user_id, source_document):
     logger.info("ABOUT TO UPSERT DOCUMENT TO VECTOR DATABASE")
     try:
         vector_store.add_documents(docs_to_upsert)
+        logger.info(
+    "INDEXING → user_id=%r | source=%r",
+    str(user_id),
+    str(source_document)
+)
         logger.info("SUCCESSFULLY INDEXED %d CHUNKS.", len(docs_to_upsert))
     except Exception as e:
         logger.error("ERROR UPSERTING TO VECTORDB: %s", e)
+        raise
 
 
 # --- STEP 5: RETRIEVAL WITH METADATA FILTERING ---
@@ -121,7 +128,21 @@ def retrieve_context(query, user_id, source_document, top_k=10):
     results = vector_store.similarity_search(
         query=query,
         k=top_k,
-        filter=qdrant_filter,
+        # filter=qdrant_filter,
+    )
+    logger.info(
+    "RETRIEVING → user_id=%r | source=%r",
+    str(user_id),
+    str(source_document)
+)
+    if not results:
+        logger.error("The retrieval did not retrieve any result")
+    logger.info(f"======= RETRIEVAL RESULT \n {results} \n ========== ")
+    for i, doc in enumerate(results[:5]):
+        logger.info(
+        "RESULT %d METADATA: %r",
+        i,
+        doc.metadata
     )
     return results
 
@@ -133,4 +154,5 @@ def rerank_results(query, documents, top_n=3):
         
     reranker = CohereRerank(model="rerank-v3.5", top_n=top_n)
     reranked_docs = reranker.compress_documents(documents=documents, query=query)
+    logger.info(f"========== RERANKED CONTEXT DOCUMENT\n {reranked_docs} \n ===================")
     return reranked_docs

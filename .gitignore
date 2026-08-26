@@ -20,3 +20,4 @@ uploads/
 /qdrant_storage
 ./qdrant_storage
 app.log
+testing_vectordb.py

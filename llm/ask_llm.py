@@ -1,9 +1,11 @@
 from pathlib import Path
 from typing import Optional
-
+import logging
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
+logger = logging.getLogger(__name__)
 
 
 def build_history_messages(history: Optional[list] = None):
@@ -46,12 +48,13 @@ def stream_generation(query: str, doc_context: str, history: Optional[list[dict]
     Call this inside a FastAPI StreamingResponse.
     """
     model = init_chat_model(
-        model="gemini-3.5-flash",
-        model_provider="google_genai"
+        model="openai/gpt-oss-120b",
+        model_provider="groq"
     )
 
     system_prompt_template = Path("prompts/system_prompt.txt").read_text()
     system_prompt = system_prompt_template.format(query=query, doc_context=doc_context)
+    
     history_messages = build_history_messages(history)
 
     prompt = ChatPromptTemplate.from_messages([
@@ -64,6 +67,7 @@ def stream_generation(query: str, doc_context: str, history: Optional[list[dict]
         history=history_messages,
         user_question=query,
     )
+    logger.info(f"========================\n FORMATTED PROMPT TO BE SENT TO LLM: \n {formatted}\n ===============")
 
     for chunk in model.stream(formatted):
         if chunk.content:
