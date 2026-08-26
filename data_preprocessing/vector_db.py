@@ -62,12 +62,12 @@ def get_vector_store():
         
         client.create_payload_index(
             collection_name=collection_name,
-            field_name="user_id",
+            field_name="metadata.user_id",
             field_schema=PayloadSchemaType.KEYWORD,
         )
         client.create_payload_index(
             collection_name=collection_name,
-            field_name="source",
+            field_name="metadata.source",
             field_schema=PayloadSchemaType.KEYWORD,
         )
 
@@ -115,11 +115,11 @@ def retrieve_context(query, user_id, source_document, top_k=10):
     qdrant_filter = models.Filter(
         must=[
             models.FieldCondition(
-                key="user_id",
+                key="metadata.user_id",
                 match=models.MatchValue(value=str(user_id)),
             ),
             models.FieldCondition(
-                key="source",
+                key="metadata.source",
                 match=models.MatchValue(value=str(source_document)),
             ),
         ]
@@ -128,7 +128,7 @@ def retrieve_context(query, user_id, source_document, top_k=10):
     results = vector_store.similarity_search(
         query=query,
         k=top_k,
-        # filter=qdrant_filter,
+        filter=qdrant_filter,
     )
     logger.info(
     "RETRIEVING → user_id=%r | source=%r",
