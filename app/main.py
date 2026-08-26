@@ -38,15 +38,15 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 # This line tells SQLAlchemy to physically create tables in Postgres if they don't exist
-models.Base.metadata.create_all(bind=engine)
+# models.Base.metadata.create_all(bind=engine)
 
-load_dotenv()
+# load_dotenv()
 
 
 
 app = FastAPI(tags=["Main APP"])
 
-os.environ["HF_TOKEN"] = os.getenv("HF_TOKEN")
+# os.environ["HF_TOKEN"] = os.getenv("HF_TOKEN")
 
 
 app.add_middleware(
@@ -63,25 +63,25 @@ app.add_middleware(
 
 
 # Directory to save uploaded files
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+# UPLOAD_DIR = Path("uploads")
+# UPLOAD_DIR.mkdir(exist_ok=True)
 
-CHAT_HISTORY_STORE: Dict[Tuple[str, str], List[Dict[str, str]]] = {}
+# CHAT_HISTORY_STORE: Dict[Tuple[str, str], List[Dict[str, str]]] = {}
 
 
-# =========================================================
-# SAFE FIELD ACCESSOR
-# =========================================================
-def _field(r: Any, key: str, default: Any = None) -> Any:
-    """
-    Safely pull a field off a retrieval result, regardless of whether
-    `r` is a plain dict, a LangChain-style Document (page_content +
-    metadata), or some other Pydantic/object model.
+# # =========================================================
+# # SAFE FIELD ACCESSOR
+# # =========================================================
+# def _field(r: Any, key: str, default: Any = None) -> Any:
+#     """
+#     Safely pull a field off a retrieval result, regardless of whether
+#     `r` is a plain dict, a LangChain-style Document (page_content +
+#     metadata), or some other Pydantic/object model.
 
-    This fixes: AttributeError: 'Document' object has no attribute 'get'
-    which happened because retrieve_context()/rerank_results() return
-    Document objects, not dicts, but the endpoint assumed dicts.
-    """
+#     This fixes: AttributeError: 'Document' object has no attribute 'get'
+#     which happened because retrieve_context()/rerank_results() return
+#     Document objects, not dicts, but the endpoint assumed dicts.
+#     """
     # 1) Plain dict
     # if isinstance(r, dict):
     #     return r.get(key, default)
