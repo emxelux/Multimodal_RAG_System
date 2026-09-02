@@ -21,8 +21,6 @@ dependencies = [
     "langgraph-prebuilt==1.0.10",
     "langgraph-sdk==0.3.13",
     "langsmith>=0.8.16",
-    "llama-cloud>=0.1.46",
-    "llama-index>=0.14.22",
     "llama-index-core>=0.14.22",
     "llama-index-embeddings-google-genai>=0.5.1",
     "llama-index-embeddings-huggingface>=0.7.0",
@@ -34,7 +32,6 @@ dependencies = [
     "llama-index-retrievers-bm25==0.7.1",
     "llama-index-vector-stores-qdrant>=0.10.0",
     "llama-index-workflows==2.20.0",
-    "llama-parse>=0.5.0",
     "loguru>=0.7.0",
     "numpy>=2.4.6",
     "passlib>=1.7.4",
@@ -59,4 +56,6 @@ dependencies = [
     "huggingface-hub>=1.19.0",
     "sqlalchemy>=2.0.0",
     "sentence-transformers>=5.6.0",
+    "llama-cloud>=2.15.0",
+    "llama-index>=0.14.24",
 ]

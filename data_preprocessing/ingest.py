@@ -6,11 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-
-try:
-    from llama_parse import LlamaParse
-except ModuleNotFoundError:
-    LlamaParse = None
+from llama_cloud import LlamaCloud
 
 
 llama_api_key = os.getenv("LLAMA_API_KEY")
@@ -18,34 +14,53 @@ if llama_api_key:
     os.environ["LLAMA_API_KEY"] = llama_api_key
 
 def ingest_pdf(file_path:str):
-    
-    parser = LlamaParse(
-        api_key=llama_api_key,
-        result_type="json"
+    client = LlamaCloud(api_key=os.getenv("LLAMA_API_KEY"))
+    file = client.files.create(
+        file = file_path,
+        purpose = "parse"
     )
-    json_result = parser.get_json_result(file_path)
-    if json_result:
-        logger.info("JSON CREATED SUCCESFFULLY FROM DOCUMENTS")
-    return json_result
+    result = client.parsing.parse(
+    file_id=file.id,
+    tier="agentic",
+    version="latest",
+    output_options={
+        "markdown": {"tables": {"output_tables_as_markdown": True}},
+        "images_to_save": ["screenshot"],
+    },
+    processing_options={
+        "ocr_parameters": {"languages": ["en"]},
+    },
+    expand=["text", "markdown", "items", "images_content_metadata"],
+)
+    return result.markdown.pages
 
 
-# print(ingest_pdf("document_files/MultimodalMachineLearning.pdf"))
 
 
-def build_documents(parsed_json, source_name):
+
+
+
+    # parser = LlamaCloud(
+    #     api_key=llama_api_key,
+    #     result_type="json"
+    # )
+    # json_result = parser.get_json_result(file_path)
+    # if json_result:
+    #     logger.info("JSON CREATED SUCCESFFULLY FROM DOCUMENTS")
+    # return json_result
+
+
+
+
+def build_documents(ingested_document, source_name):
     documents = []
-    if not parsed_json: #or not isinstance(parsed_json, list):
-        logger.info(f"Warning: parsed_json is empty or invalid for {source_name}")
+    if not ingested_document:
+        logger.warning("No ingested document data provided.")
         return documents
 
-    # 2. Safe extraction using .get() just in case "pages" is missing
-    first_item = parsed_json[0]
-    pages = first_item.get("pages", [])
-
-    for page in pages:
-        page_num = page.get("page", 0)
-        markdown_text = page.get("md", "")
-
+    for pages in ingested_document:
+        page_num = pages.page_number if hasattr(pages, 'page_number') else None
+        markdown_text = pages.markdown if hasattr(pages, 'markdown') else str(pages)
         documents.append(
             Document(
                 page_content=markdown_text,
@@ -57,3 +72,4 @@ def build_documents(parsed_json, source_name):
         )
 
     return documents
+
