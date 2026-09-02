@@ -1,420 +1,202 @@
+"""
+End-to-end RAG evaluation for ChatPDF.
+
+For every unique source PDF referenced in evaluation/questions.json:
+    1. Ingest + chunk + index it ONCE under a fresh document_id.
+For every question:
+    2. retrieve_context -> rerank_results -> build doc_context, exactly
+       the way app/main.py's /generation endpoint does it.
+    3. Generate an answer with the same LLM the app uses.
+
+Results are scored with ragas (faithfulness, answer relevancy,
+context precision, context recall) using your own Groq model +
+HF embeddings as the judge, so no OpenAI key is required.
+
+Run with:  python -m evaluation.rag_evaluation
+(from the project root, so the "app"/"data_preprocessing"/"llm" imports resolve)
+"""
+
 import json
 import os
+import uuid
 
 from dotenv import load_dotenv
+from loguru import logger
 from tqdm.auto import tqdm
-from langchain.chat_models import init_chat_model
-from langchain_core.messages import HumanMessage, SystemMessage
-
-from data_preprocessing.ingest import (
-    ingest_pdf,
-    build_documents,
-)
-
-from data_preprocessing.chunking import (
-    split_markdown_document,
-)
-
-from data_preprocessing.vector_db import (
-    retrieve_context,
-    rerank_results,
-    upsert_split_documents,
-)
-
-
-# ============================================================
-# 1. LOAD ENVIRONMENT VARIABLES
-# ============================================================
 
 load_dotenv()
 
-if not os.getenv("GROQ_API_KEY"):
-    raise ValueError(
-        "GROQ_API_KEY is not set in the environment or .env file."
-    )
-
-
-# ============================================================
-# 2. INITIALIZE LLM
-# ============================================================
-
-llm = init_chat_model(
-    model="openai/gpt-oss-20b",
-    model_provider="groq",
+from data_preprocessing.ingest import ingest_pdf, build_documents
+from data_preprocessing.chunking import split_markdown_document
+from data_preprocessing.vector_db import (
+    upsert_split_documents,
+    retrieve_context,
+    rerank_results,
 )
+from llm.ask_llm import generation
 
-
-# ============================================================
-# 3. CONFIGURATION
-# ============================================================
-
-USER_ID = "854e73ae-f2d8-42e6-9c6d-a2a88e27a9d5"
-
+EVAL_USER_ID = "8a707bc8-2b26-4033-a775-e2b0c2bd47c4"
 DOCUMENTS_DIR = "evaluation/Documents"
-
-GROUND_TRUTH_FILE = (
-    "evaluation/Documents/ground_truth.json"
-)
-
-OUTPUT_FILE = (
-    "evaluation/Documents/ground_truth_with_answers.json"
-)
-
-SYSTEM_PROMPT_FILE = (
-    "prompts/system_prompt_v2.txt"
-)
+QUESTIONS_PATH = "evaluation/questions.json"
+RAW_RESULTS_PATH = "evaluation/eval_raw_results.json"
+SCORES_PATH = "evaluation/eval_scores.csv"
+TOP_K_RETRIEVE = 10
+TOP_N_RERANK = 3
 
 
-# ============================================================
-# 4. DOCUMENTS TO EVALUATE
-# ============================================================
+def _field(r, key, default=None):
+   
+    if isinstance(r, dict):
+        return r.get(key, default)
 
-documents = [
-    "DATA-ANALYSIS-REPORT-TEAM-5.pdf",
-    "Medical Paper on Cancer.pdf",
-    "Technical Paper on Machine Learning.pdf",
-]
+    metadata = getattr(r, "metadata", None)
+    if key == "content":
+        page_content = getattr(r, "page_content", None)
+        if page_content is not None:
+            return page_content
+    if isinstance(metadata, dict) and key in metadata:
+        return metadata[key]
 
+    if hasattr(r, key):
+        return getattr(r, key)
 
-# ============================================================
-# 5. LOAD GROUND TRUTH
-# ============================================================
+    if hasattr(r, "model_dump"):
+        try:
+            return r.model_dump().get(key, default)
+        except Exception:
+            pass
 
-with open(
-    GROUND_TRUTH_FILE,
-    "r",
-    encoding="utf-8",
-) as f:
-
-    ground_truth = json.load(f)
-
-
-# ============================================================
-# 6. LOAD SYSTEM PROMPT
-# ============================================================
-
-with open(
-    SYSTEM_PROMPT_FILE,
-    "r",
-    encoding="utf-8",
-) as f:
-
-    system_prompt = f.read()
+    return default
 
 
-# ============================================================
-# 7. INDEX DOCUMENTS ONCE
-# ============================================================
-
-print("\n" + "=" * 60)
-print("INDEXING EVALUATION DOCUMENTS")
-print("=" * 60)
-
-
-for document in tqdm(
-    documents,
-    desc="Indexing documents",
-):
-
-    document_path = os.path.join(
-        DOCUMENTS_DIR,
-        document,
-    )
-
-    print(
-        f"\nProcessing: {document}"
+def build_doc_context(final_context):
+    """Same formatting main.py feeds to the LLM. Note: chunks store their
+    source under metadata['source'] (see vector_db.upsert_split_documents),
+    not 'source_name' -- falling back to 'source' avoids empty citations."""
+    return "\n\n".join(
+        f"[Chunk {i+1}] Source: {_field(r, 'source', _field(r, 'source_name', ''))}, "
+        f"Page: {_field(r, 'page', '?')}\n{_field(r, 'content', '')}"
+        for i, r in enumerate(final_context)
     )
 
 
-    # --------------------------------------------------------
-    # Check that document exists
-    # --------------------------------------------------------
+def index_documents(filenames):
+    """Ingest + chunk + upsert each unique PDF exactly once.
+    Returns {filename: document_id} so questions can look up their doc."""
+    doc_ids = {}
+    for filename in tqdm(filenames, desc="Indexing documents"):
+        ingested = ingest_pdf(f"{DOCUMENTS_DIR}/{filename}")
+        docs = build_documents(ingested, filename)
+        nodes = split_markdown_document(docs)
 
-    if not os.path.exists(document_path):
+        document_id = str(uuid.uuid4())
+        upsert_split_documents(nodes, user_id=EVAL_USER_ID, source_document=document_id)
 
-        print(
-            f"WARNING: Document not found: "
-            f"{document_path}"
+        doc_ids[filename] = document_id
+        logger.info(f"Indexed '{filename}' -> {len(nodes)} chunks, document_id={document_id}")
+
+    return doc_ids
+
+
+def run_pipeline():
+    with open(QUESTIONS_PATH, "r") as f:
+        questions = json.load(f)
+
+    unique_sources = sorted({q["source"] for q in questions})
+    doc_ids = index_documents(unique_sources)
+
+    rows = []
+    for q in tqdm(questions, desc="Retrieval + generation"):
+        document_id = doc_ids[q["source"]]
+
+        retrieved = retrieve_context(
+            query=q["user_input"],
+            user_id=EVAL_USER_ID,
+            source_document=document_id,
+            top_k=TOP_K_RETRIEVE,
+        )
+        final_context = rerank_results(q["user_input"], retrieved, top_n=TOP_N_RERANK)
+        doc_context = build_doc_context(final_context)
+
+        answer = generation(query=q["user_input"], doc_context=doc_context)
+
+        rows.append(
+            {
+                "user_input": q["user_input"],
+                "response": answer,
+                "retrieved_contexts": [_field(r, "content", "") for r in final_context],
+                "reference": q["reference"],
+                "source": q["source"],
+            }
         )
 
-        continue
+    return rows
 
 
-    # --------------------------------------------------------
-    # 1. Ingest / Parse document
-    # --------------------------------------------------------
+def get_ragas_judge():
+    from langchain.chat_models import init_chat_model
+    from langchain_huggingface import HuggingFaceEndpointEmbeddings
+    from ragas.llms import LangchainLLMWrapper
+    from ragas.embeddings import LangchainEmbeddingsWrapper
 
-    print("  → Ingesting document...")
+    eval_llm = init_chat_model(model="openai/gpt-oss-120b", model_provider="groq")
+    eval_embeddings = HuggingFaceEndpointEmbeddings(
+        model="BAAI/bge-large-en-v1.5",
+        huggingfacehub_api_token=os.getenv["HF_TOKEN"],
+    )
+    return LangchainLLMWrapper(eval_llm), LangchainEmbeddingsWrapper(eval_embeddings)
 
-    json_result = ingest_pdf(
-        document_path
+
+def score_with_ragas(rows):
+    from datasets import Dataset
+    from ragas import evaluate
+    from ragas.metrics import (
+        faithfulness,
+        answer_relevancy,
+        context_precision,
+        context_recall,
     )
 
+    judge_llm, judge_embeddings = get_ragas_judge()
 
-    # --------------------------------------------------------
-    # 2. Build documents
-    # --------------------------------------------------------
-
-    print("  → Building document nodes...")
-
-    markdown_nodes = build_documents(
-        json_result,
-        document,
+    dataset = Dataset.from_list(
+        [
+            {
+                "user_input": r["user_input"],
+                "response": r["response"],
+                "retrieved_contexts": r["retrieved_contexts"],
+                "reference": r["reference"],
+            }
+            for r in rows
+        ]
     )
 
-
-    # --------------------------------------------------------
-    # 3. Split into chunks
-    # --------------------------------------------------------
-
-    print("  → Splitting document into chunks...")
-
-    final_chunks = split_markdown_document(
-        markdown_nodes
+    result = evaluate(
+        dataset,
+        metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+        llm=judge_llm,
+        embeddings=judge_embeddings,
     )
+    return result
 
 
-    print(
-        f"  → Created {len(final_chunks)} chunks."
+if __name__ == "__main__":
+    rows = run_pipeline()
+
+    with open(RAW_RESULTS_PATH, "w") as f:
+        json.dump(rows, f, indent=2)
+    logger.info(f"Saved raw retrieval/generation results -> {RAW_RESULTS_PATH}")
+
+    scores = score_with_ragas(rows)
+    df = scores.to_pandas()
+    df.to_csv(SCORES_PATH, index=False)
+    logger.info(f"Saved per-question scores -> {SCORES_PATH}")
+
+    print("\n=== Aggregate RAGAS scores ===")
+    print(scores)
+
+    print("\n=== Per-source breakdown (mean faithfulness / answer_relevancy) ===")
+    df["source"] = [r["source"] for r in rows]
+    (
+        df.groupby("source")[["faithfulness", "answer_relevancy"]].mean().round(3)
     )
-
-
-    # --------------------------------------------------------
-    # 4. Upsert chunks into vector database
-    # --------------------------------------------------------
-
-    print(
-        "  → Upserting chunks into vector database..."
-    )
-
-    upsert_split_documents(
-        final_chunks,
-        USER_ID,
-        document,
-    )
-
-
-    print(
-        f"  ✓ Finished indexing: {document}"
-    )
-
-
-print("\n" + "=" * 60)
-print("DOCUMENT INDEXING COMPLETE")
-print("=" * 60)
-
-
-# ============================================================
-# 8. EVALUATE QUESTIONS
-# ============================================================
-
-evaluating_documents = []
-
-
-print("\n" + "=" * 60)
-print("STARTING RAG EVALUATION")
-print("=" * 60)
-
-
-for doc in tqdm(
-    ground_truth,
-    desc="Evaluating questions",
-):
-
-    question = doc["question"]
-
-    source_document = doc["source"]
-
-    reference_answer = doc["ground_truth"]
-
-
-    # ========================================================
-    # Validate source document
-    # ========================================================
-
-    if source_document not in documents:
-
-        print(
-            f"\nWARNING: Skipping question."
-        )
-
-        print(
-            f"Source document '{source_document}' "
-            f"is not in the evaluation document list."
-        )
-
-        continue
-
-
-    print(
-        f"\n{'-' * 60}"
-    )
-
-    print(
-        f"Question: {question}"
-    )
-
-    print(
-        f"Source: {source_document}"
-    )
-
-
-    # ========================================================
-    # 1. RETRIEVE
-    # ========================================================
-
-    retrieved_documents = retrieve_context(
-        query=question,
-        user_id=USER_ID,
-        source_document=source_document,
-        top_k=5,
-    )
-
-
-    print(
-        f"Retrieved documents: "
-        f"{len(retrieved_documents)}"
-    )
-
-
-    # ========================================================
-    # 2. RERANK
-    # ========================================================
-
-    if retrieved_documents:
-
-        reranked_documents = rerank_results(
-            query=question,
-            documents=retrieved_documents,
-            top_n=3,
-        )
-
-    else:
-
-        print(
-            "WARNING: No documents retrieved."
-        )
-
-        reranked_documents = []
-
-
-    # ========================================================
-    # 3. EXTRACT CONTEXT
-    # ========================================================
-
-    reranked_contexts = [
-        document.page_content
-        for document in reranked_documents
-    ]
-
-
-    # ========================================================
-    # 4. BUILD CONTEXT STRING
-    # ========================================================
-
-    context_text = "\n\n".join(
-        reranked_contexts
-    )
-
-
-    if not context_text:
-
-        context_text = (
-            "No relevant context was retrieved "
-            "from the knowledge base."
-        )
-
-
-    # ========================================================
-    # 5. FORMAT SYSTEM PROMPT
-    # ========================================================
-
-    formatted_system_prompt = system_prompt.format(
-        contexts=context_text,
-        query=question,
-    )
-
-
-    # ========================================================
-    # 6. CREATE LLM MESSAGES
-    # ========================================================
-
-    system_message = SystemMessage(
-        content=formatted_system_prompt
-    )
-
-    human_message = HumanMessage(
-        content=question
-    )
-
-
-    messages = [
-        system_message,
-        human_message,
-    ]
-
-
-    # ========================================================
-    # 7. GENERATE ANSWER
-    # ========================================================
-
-    response = llm.invoke(
-        messages
-    )
-
-    answer = response.content
-
-
-    # ========================================================
-    # 8. SAVE EVALUATION RESULT
-    # ========================================================
-
-    evaluating_documents.append(
-        {
-            "question": question,
-
-            "contexts": reranked_contexts,
-
-            "answer": answer,
-
-            "ground_truth": reference_answer,
-        }
-    )
-
-
-# ============================================================
-# 9. SAVE RAGAS EVALUATION DATASET
-# ============================================================
-
-print("\n" + "=" * 60)
-print("SAVING EVALUATION DATASET")
-print("=" * 60)
-
-
-with open(
-    OUTPUT_FILE,
-    "w",
-    encoding="utf-8",
-) as f:
-
-    json.dump(
-        evaluating_documents,
-        f,
-        indent=4,
-        ensure_ascii=False,
-    )
-
-
-print(
-    f"\n✓ Evaluation completed."
-)
-
-print(
-    f"✓ Evaluated questions: "
-    f"{len(evaluating_documents)}"
-)
-
-print(
-    f"✓ Results saved to: "
-    f"{OUTPUT_FILE}"
-)

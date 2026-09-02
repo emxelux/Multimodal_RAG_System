@@ -14,6 +14,7 @@ if llama_api_key:
     os.environ["LLAMA_API_KEY"] = llama_api_key
 
 def ingest_pdf(file_path:str):
+    logger.info("INGESTING PDF")
     client = LlamaCloud(api_key=os.getenv("LLAMA_API_KEY"))
     file = client.files.create(
         file = file_path,
@@ -33,22 +34,6 @@ def ingest_pdf(file_path:str):
     expand=["text", "markdown", "items", "images_content_metadata"],
 )
     return result.markdown.pages
-
-
-
-
-
-
-
-    # parser = LlamaCloud(
-    #     api_key=llama_api_key,
-    #     result_type="json"
-    # )
-    # json_result = parser.get_json_result(file_path)
-    # if json_result:
-    #     logger.info("JSON CREATED SUCCESFFULLY FROM DOCUMENTS")
-    # return json_result
-
 
 
 

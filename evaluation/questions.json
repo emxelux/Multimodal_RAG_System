@@ -1,0 +1,302 @@
+[
+  {
+    "user_input": "Which linear regression model achieved the highest R-squared score when evaluated using all parameters in Table 1?",
+    "reference": "The Theil Sen Regressor achieved the highest R-squared score of 0.996385 in Table 1.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What is the primary site of origin for a cancer that begins in the breast and later spreads to the lungs?",
+    "reference": "The primary site is the breast, while the lung is considered a secondary or metastatic site.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "In Figure 3 of the data analysis report, which continent reported the lowest number of total confirmed COVID-19 cases?",
+    "reference": "Australia/Oceania reported the lowest number of total confirmed cases with 74,944.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "According to the SEER manual, what primary germ layer gives rise to all muscle, bone, and blood cells?",
+    "reference": "All muscle, bone, and blood cells are derived from the mesoderm germ layer.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What are the three main extent-of-disease categories used to describe the stage of cancer in a patient?",
+    "reference": "The three main categories used to describe stage of disease are localized, regional, and distant.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What was the exact mean value of total deaths calculated across the dataset as shown in Figure 6?",
+    "reference": "The mean of total deaths was 18613.52727272727.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What is the specific parameter weighting assigned to 'Total Confirmed' cases by the Theil-Sen Model in Table 2?",
+    "reference": "The weighting assigned to 'Total Confirmed' by the Theil-Sen Model is 56.938.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What distinguish carcinomas from sarcomas in terms of tissue and cell origin?",
+    "reference": "Carcinomas originate from epithelial cells (derived from ectoderm or endoderm), while sarcomas originate from connective tissue and non-epithelial structures like muscle, bone, and fat (derived from mesoderm).",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "According to Table 3, which model became the best performing model after one of the key parameters was removed?",
+    "reference": "The SGDRegressor became the best performing model after a key parameter was removed, outperforming the Theil-Sen model in all categories except MAE.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What ICD-O-2 topography code is assigned to a carcinoma of the dome of the bladder?",
+    "reference": "The ICD-O-2 topography code for the dome of the bladder is C67.1.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "In Figure 7's Power BI summary, what is the reported total number of confirmed COVID-19 cases globally?",
+    "reference": "The total number of confirmed cases reported in the summary visualization is 182,988,698.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "According to the Pretest in Section F, what tissue type corresponds to the root word 'lei-'?",
+    "reference": "The word root 'lei-' refers to smooth muscle.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "In Figure 1's parameter weighting chart, which feature parameters exhibited the largest magnitude of weights under the Theil-Sen model?",
+    "reference": "Total Confirmed cases and Total Recovered cases exhibited the largest magnitude of weights.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What term describes the process where embryonic cells begin to change their shape and structure to form distinct germ layers?",
+    "reference": "This process is known as differentiation.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What source was the dataset collected from for the global COVID-19 analysis report?",
+    "reference": "The dataset was collected from Kaggle Datasets as of June 30, 2021.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "In ICD-O-2 coding, what does a fifth-digit behavior code of /2 represent?",
+    "reference": "A behavior code of /2 represents an in situ tumor (carcinoma in situ / non-invasive).",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What is the Total Deaths value for Europe in the aggregated table in Figure 4?",
+    "reference": "The Total Deaths for Europe in Figure 4 is 1,102,752.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What distinguishes a benign tumor from a malignant tumor in terms of cellular behavior?",
+    "reference": "A benign tumor consists of cells that will not invade adjacent tissues or metastasize to distant sites, whereas a malignant tumor invades local tissues and spreads/metastasizes to other areas of the body.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "Which country reported the highest number of total deaths in the Power BI map/chart of Figure 7?",
+    "reference": "The USA reported the highest total deaths among individual countries.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What is the ICD-O-2 morphology code and behavior for a Leiomyosarcoma?",
+    "reference": "The morphology code for Leiomyosarcoma is 8890/3.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "According to Figure 2's line plot, what is the total sum population of Asia?",
+    "reference": "The total population sum for Asia is 4,643,241,629.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "Why is a diagnosis of Squamous cell carcinoma of the chin considered non-reportable in standard tumor registry guidelines?",
+    "reference": "It is non-reportable because skin cancers (basal and squamous cell carcinomas of the skin, C44._) are generally excluded from registry collection guidelines.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "In Table 1, what is the Mean Absolute Error (MAE) of the Passive Aggressive model?",
+    "reference": "The MAE for the Passive Aggressive model in Table 1 is 0.154559.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What medical term refers to a tumor composed of both cartilaginous connective tissue and mucinous tissue that is malignant?",
+    "reference": "The term for this malignant mixed tumor is Chondromyxosarcoma (or Myxochondrosarcoma).",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What three columns were dropped during normalisation to prevent overfitting in the COVID-19 regression models?",
+    "reference": "The columns dropped were Total Deaths Per 1m Population, Total Cases Per 1m Population, and Total Tests Per 1m Population.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What is the difference between an incisional biopsy and an excisional biopsy?",
+    "reference": "An incisional biopsy removes only a portion/sample of a tumor for diagnosis, whereas an excisional biopsy removes the entire tumor mass and acts as a form of treatment.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "In Figure 5, what is the total sum of recovered cases recorded for South America?",
+    "reference": "The total recovered cases recorded for South America is 28,169,452.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What is the term 'remission' defined as in cancer care?",
+    "reference": "Remission refers to a state where the patient is temporarily free or experiencing abatement of cancer symptoms, though cancer cells may still remain in the body.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What model optimization change improved the Lasso Lars regressor's performance metrics to MSE = 0.202308?",
+    "reference": "Changing the penalty hyperparameter alpha from 1 to 10^-6 improved the performance metrics.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "Which acronym represents the coding manual published by the College of American Pathologists that covers all pathologic entities?",
+    "reference": "SNOMED (Systematized Nomenclature of Medicine).",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "In Table 3, what is the R-squared score achieved by the Bayesian Ridge model after dropping a key parameter?",
+    "reference": "The R-squared score for the Bayesian Ridge model in Table 3 is 0.511921.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What are the two fundamental characteristics that define any tumor or neoplasm?",
+    "reference": "1. It is a mass of nonstructured new cells. 2. It has no known purpose in the physiological function of the body.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "According to the bar chart in Figure 4, which continent recorded the lowest number of total COVID-19 deaths?",
+    "reference": "Australia/Oceania recorded the lowest total deaths with 1,283.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "In ICD-O-2, how many total digits/characters are required for complete identification of a neoplasm's site, morphology, behavior, and grade?",
+    "reference": "A total of 10 characters are necessary (4 for topography site, 4 for morphologic type, 1 for behavior, and 1 for grade/differentiation).",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What weighting value did the Theil-Sen model place on the 'Europe' continent parameter in Table 2?",
+    "reference": "The weighting assigned to 'Europe' by the Theil-Sen model is -0.0013.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "Which germ layer gives rise to the nervous system and the epidermis of the skin?",
+    "reference": "The ectoderm layer gives rise to the nervous system and epidermis.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "According to Figure 2 in the modeling section, which features had the highest positive weightings across models after total confirmed cases was removed?",
+    "reference": "The highest weightings were given to Total Tests, Active Cases, and Total Recovered.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What is the full title and edition of the ICD manual used specifically for oncology registries published in 1990?",
+    "reference": "International Classification of Diseases for Oncology, Second Edition (ICD-O-2).",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "In Figure 1 of the Data Exploration section, what Python library function and call was used to load the dataset?",
+    "reference": "pd.read_csv() from the Pandas library was used.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What is a benign tumor of cartilage tissue called?",
+    "reference": "A benign tumor of cartilage tissue is called a Chondroma.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What mean squared error (MSE) score did the ARDRegression model obtain in Table 1?",
+    "reference": "The ARDRegression model obtained an MSE score of 0.199966.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What classification and morphology code is given to Follicular carcinoma in situ according to ICD-O-2 guidelines?",
+    "reference": "The topography is C73.9 and the morphology is 8330/29.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What percentage of overall total deaths did Europe account for in the Power BI pie chart of Figure 7?",
+    "reference": "Europe accounted for 27.83% (1.1028M) of total deaths.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What word root represents 'marrow' in medical neoplastic nomenclature?",
+    "reference": "The word root for marrow is 'myel-'.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What was the targeted target feature to predict in the machine learning models used in the COVID-19 analysis?",
+    "reference": "The target feature chosen for prediction was 'Total Deaths' in each country.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What suffix is added to a tissue word root to designate a benign tumor versus a malignant connective tissue tumor?",
+    "reference": "The suffix '-oma' designates a benign tumor, while '-sarcoma' designates a malignant connective tissue tumor.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "According to Table 3, what was the MSE of the Theil-Sen Regressor after one of the key parameters was dropped?",
+    "reference": "The MSE of the Theil-Sen Regressor degraded to 0.219594 in Table 3.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What does the abbreviation 'NOS' stand for in cancer terminology and coding?",
+    "reference": "'NOS' stands for 'Not Otherwise Specified'.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "In Figure 3, what is the total number of confirmed cases reported for North America?",
+    "reference": "The total number of confirmed cases for North America is 40,614,193.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What is the definition of 'extent of disease' in cancer abstraction?",
+    "reference": "'Extent of disease' is a detailed description of how far the disease/cancer has spread from the primary site to neighboring organs, lymph nodes, or distant sites.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What was the name of the project team and internship program that authored the COVID-19 data analysis report?",
+    "reference": "Team 5 under the HDR UK Black Internship program.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "Is a Cystadenoma benign or malignant, and what tissue layer/type does it involve?",
+    "reference": "It is a benign cystic tumor involving glandular epithelial cells.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What was the total count of countries included in the Kaggle COVID-19 summary dataset as shown in the Power BI dashboard?",
+    "reference": "The dataset contained information for 220 countries.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What is the difference between direct extension and metastasis?",
+    "reference": "Direct extension is contiguous growth/spread into adjacent, neighboring tissues or organs, whereas metastasis is non-contiguous spread where cells break away to distant sites via blood, lymph, or fluids.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "In Table 1, what was the performance of LassoLars in terms of R-squared score?",
+    "reference": "LassoLars performed poorly with an R-squared score of -0.005356.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What type of tissue lines the blood and lymphatic vessels and is derived from mesoderm?",
+    "reference": "Endothelium lines the blood and lymphatic vessels.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "Which continent had the highest number of overall confirmed COVID-19 cases in Figure 3?",
+    "reference": "Asia had the highest number of total confirmed cases with 55,851,497.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "What is the morphology code for Acute granulocytic leukemia in ICD-O-2?",
+    "reference": "The morphology code is 9861/3.",
+    "source": "Medical Paper on Cancer.pdf"
+  },
+  {
+    "user_input": "What weighting value did the Theil-Sen model predict for 'Active Cases' in Table 2?",
+    "reference": "The predicted weighting for 'Active Cases' was -5.7468.",
+    "source": "DATA-ANALYSIS-REPORT-TEAM-5.pdf"
+  },
+  {
+    "user_input": "Why must cancer be viewed as a 'biological continuum'?",
+    "reference": "Because cancer is an ongoing process and uninterrupted sequence of biological events that may persist, recur, or require management throughout the entire lifetime of the patient.",
+    "source": "Medical Paper on Cancer.pdf"
+  }
+]
