@@ -37,6 +37,8 @@ huggingface-hub
 
 # ── PDF parsing ───────────────────────────────────────────────
 llama-parse>=0.5.0             # LlamaParse cloud API for high-quality PDF ingestion
+llama-cloud>=2.15.0
+llama-index>=0.14.24
 
 # ── Utilities ─────────────────────────────────────────────────
 loguru>=0.7.0                  # structured logging (replace bare print() calls)

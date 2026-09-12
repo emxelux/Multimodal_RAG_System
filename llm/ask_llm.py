@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import Optional
 import logging
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 logger = logging.getLogger(__name__)
 
