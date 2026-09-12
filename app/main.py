@@ -132,7 +132,6 @@ async def upload_file(
     Checks file content hash to prevent duplicate parsing and storage overhead.
     Returns a document_id that the frontend must send later to /generation.
     """
-    logger.info('=========== ✔️ Starting ingestion and uploading ✔️ ====================')
     from databases.utils import hash_pdf
     from data_preprocessing.ingest import ingest_pdf, build_documents
     from data_preprocessing.chunking import split_markdown_document
@@ -144,6 +143,7 @@ async def upload_file(
     rerank_results
 )
     try:
+        logger.info('=========== ✔️ Starting ingestion and uploading ✔️ ====================')
         if not file.filename:
             logger.error("XXXXXXXXXXXXXXXXXXX   No File name Provided XXXXXXXXXXXXXXXXXXXXXX")
             raise HTTPException(status_code=400, detail="No file name provided.")
