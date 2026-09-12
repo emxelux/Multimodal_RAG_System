@@ -1,5 +1,6 @@
+import sys
 import os
-import logging
+
 from functools import lru_cache
 from dotenv import load_dotenv
 
@@ -13,10 +14,10 @@ from qdrant_client import QdrantClient, models
 from qdrant_client.models import PayloadSchemaType
 
 # Configure module-level logger cleanly
-logger = logging.getLogger(__name__)
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
 
 
 
@@ -58,7 +59,7 @@ def get_vector_store():
                 )
             }
         )
-        logger.info("COLLECTION CREATED SUCCESSFULLY")
+        logger .info("COLLECTION CREATED SUCCESSFULLY")
         
         client.create_payload_index(
             collection_name=collection_name,

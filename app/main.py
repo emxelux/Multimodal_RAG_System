@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 import json
 import logging
 from dotenv import load_dotenv
+import sys
 
 
 # # ===== Schemas =====
@@ -21,13 +22,19 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 
 
+from app.logger_config import setup_logging
 
-logging.basicConfig(
-    filename='app.log',
-    filemode='w',  # 'w' to overwrite every run; 'a' to append (default)
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+
+# 1. Initialize configuration ONCE
+setup_logging()
+
+# 2. Grab module logger
+logger = logging.getLogger(__name__)
+
+
+logger.info("================== APP IS STARTING UP ====================")
+
+
 from databases.database import engine
 from databases import models  
 
@@ -125,6 +132,7 @@ async def upload_file(
     Checks file content hash to prevent duplicate parsing and storage overhead.
     Returns a document_id that the frontend must send later to /generation.
     """
+    logger.info('=========== ✔️ Starting ingestion and uploading ✔️ ====================')
     from databases.utils import hash_pdf
     from data_preprocessing.ingest import ingest_pdf, build_documents
     from data_preprocessing.chunking import split_markdown_document
@@ -137,11 +145,12 @@ async def upload_file(
 )
     try:
         if not file.filename:
-            logging.error("No File name Provided")
+            logger.error("XXXXXXXXXXXXXXXXXXX   No File name Provided XXXXXXXXXXXXXXXXXXXXXX")
             raise HTTPException(status_code=400, detail="No file name provided.")
 
         original_filename = file.filename
         document_id = str(uuid.uuid4())
+        logger.info(F" ==================== INGESTING {document_id} ============================")
 
        
         unique_name = f"{current_user.id}_{document_id}_{original_filename}"
@@ -151,12 +160,12 @@ async def upload_file(
             shutil.copyfileobj(file.file, buffer)
 
         # 2) Compute hash and check for duplicates in the DB
-        logging.info("Hashing pdf content")
+        logger.info("==================== STARTING HASHING PDF =======================")
         hashed_content = hash_pdf(saved_path)
         existing_file = db.query(Document).filter(Document.document_hash == hashed_content).first()
         
         if existing_file:
-            logging.info("PDF ALREADY EXISTs")
+            logger.warning("================================ PDF ALREADY EXISTs ===============================")
             # Clean up the file we just saved to avoid redundant disk usage
             if saved_path.exists():
                 saved_path.unlink()
@@ -172,33 +181,33 @@ async def upload_file(
         # Parse PDF
         json_result = ingest_pdf(file_path=str(saved_path))
         if not json_result:
-            logging.error("THERE IS NO JSON RESULT CREATED")
+            logger.error(" ======================== THERE IS NO JSON RESULT CREATED =============================")
             
         
 
         # Build LangChain Documents
         documents = build_documents(json_result, original_filename)
         if not documents:
-            logging.info("COULD NOT SUCCESSFULLY CREATE DOCUMENT OBJECT")
-        logging.info("DOCUMENT OBJECT BUILT SUCCESSFULLY")
+            logger.error("XXXXXXXXXXXXXXXXXXX  COULD NOT SUCCESSFULLY CREATE DOCUMENT OBJECT  XXXXXXXXXXXXXXXXXXXXXX")
+        logger.info("=========================  DOCUMENT OBJECT BUILT SUCCESSFULLY ===========================")
         # Split into chunks
         nodes = split_markdown_document(documents)
         if not nodes:
-            logging.error("NO CHUNKS WERE CREATED SUCCESSFULLY")
+            logger.error("==========================   NO CHUNKS WERE CREATED SUCCESSFULLY  ================================")
             if saved_path.exists():
                 saved_path.unlink()
             raise HTTPException(
                 status_code=400,
                 detail="No chunks were created from the uploaded document."
             )
-        logging.info(f"{len(nodes)} NODES CREATED SUCCESSFULY")
+        logger.info(f" =====================  {len(nodes)} NODES CREATED SUCCESSFULY  ==========================================")
         # Upsert chunks into vector store
         upsert_split_documents(
             markdown_nodes=nodes,
             user_id=str(current_user.id),
             source_document=document_id
         )
-        logging.info("DOCUMENT UPSERTED TO DATABASE SUCCESSFULLY")
+        logger.info("DOCUMENT UPSERTED TO DATABASE SUCCESSFULLY")
         # 4) Save metadata & hash record to relational DB
         new_doc = Document(
             id=document_id,
@@ -212,7 +221,7 @@ async def upload_file(
             
         db.add(new_doc)
         db.commit()
-        logging.info("NEW DOCUMENT ADDED TO DATABASE SUCCESSFULLY")
+        logger.info(" ============================   NEW DOCUMENT ADDED TO DATABASE SUCCESSFULLY  =============================")
 
         return {
             "status": "Successfully indexed and processed document",
@@ -224,7 +233,7 @@ async def upload_file(
     
     except Exception as e:
         db.rollback()
-        logging.error(f"THEREIS AN ERROR {e}")
+        logger.error(f"THEREIS AN ERROR {e}")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
@@ -246,12 +255,12 @@ def retrieval_and_generation(
   
     # ── Step 1: retrieval + reranking (synchronous, happens before streaming) ──
     try:
-        logging.info("QUERYING THE VECTOR DATABASE....")
+        logger.info("QUERYING THE VECTOR DATABASE....")
         results = retrieve_context(question.query, current_user.id, question.document_id)
-        logging.info(f"/n/n=============/n RESULTS: {results}/n/n ==================")
+        logger.info(f"/n/n=============/n RESULTS: {results}/n/n ==================")
         final_context = rerank_results(question.query, results)
 
-        logging.info(f"====================== Reranked Results =====================\n\n {final_context}")
+        logger.info(f"====================== Reranked Results =====================\n\n {final_context}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Retrieval failed: {str(e)}")
 
