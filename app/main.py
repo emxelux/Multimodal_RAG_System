@@ -121,120 +121,267 @@ from databases.database import get_db
 from sqlalchemy.orm import Session
 from databases.oauth2 import get_current_user
 from databases.models import User, Document
-@app.post("/upload")
-async def upload_file(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Upload a PDF, parse it, split into chunks, and store in vector DB.
-    Checks file content hash to prevent duplicate parsing and storage overhead.
-    Returns a document_id that the frontend must send later to /generation.
-    """
-    from databases.utils import hash_pdf
-    from data_preprocessing.ingest import ingest_pdf, build_documents
-    from data_preprocessing.chunking import split_markdown_document
+# @app.post("/upload")
+# async def upload_file(
+#     file: UploadFile = File(...),
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     """
+#     Upload a PDF, parse it, split into chunks, and store in vector DB.
+#     Checks file content hash to prevent duplicate parsing and storage overhead.
+#     Returns a document_id that the frontend must send later to /generation.
+#     """
+#     from databases.utils import hash_pdf
+#     from data_preprocessing.ingest import ingest_pdf, build_documents
+#     from data_preprocessing.chunking import split_markdown_document
 
 
-    from data_preprocessing.vector_db import (
-    upsert_split_documents,
-    retrieve_context,
-    rerank_results
-)
-    try:
-        logger.info('=========== ✔️ Starting ingestion and uploading ✔️ ====================')
-        if not file.filename:
-            logger.error("XXXXXXXXXXXXXXXXXXX   No File name Provided XXXXXXXXXXXXXXXXXXXXXX")
-            raise HTTPException(status_code=400, detail="No file name provided.")
+#     from data_preprocessing.vector_db import (
+#     upsert_split_documents,
+#     retrieve_context,
+#     rerank_results
+# )
+#     try:
+#         logger.info('=========== ✔️ Starting ingestion and uploading ✔️ ====================')
+#         if not file.filename:
+#             logger.error("XXXXXXXXXXXXXXXXXXX   No File name Provided XXXXXXXXXXXXXXXXXXXXXX")
+#             raise HTTPException(status_code=400, detail="No file name provided.")
 
-        original_filename = file.filename
-        document_id = str(uuid.uuid4())
-        logger.info(F" ==================== INGESTING {document_id} ============================")
+#         original_filename = file.filename
+#         document_id = str(uuid.uuid4())
+#         logger.info(F" ==================== INGESTING {document_id} ============================")
 
        
-        unique_name = f"{current_user.id}_{document_id}_{original_filename}"
-        saved_path = UPLOAD_DIR / unique_name
+#         unique_name = f"{current_user.id}_{document_id}_{original_filename}"
+#         saved_path = UPLOAD_DIR / unique_name
 
-        with open(saved_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+#         with open(saved_path, "wb") as buffer:
+#             shutil.copyfileobj(file.file, buffer)
 
-        # 2) Compute hash and check for duplicates in the DB
-        logger.info("==================== STARTING HASHING PDF =======================")
-        hashed_content = hash_pdf(saved_path)
-        existing_file = db.query(Document).filter(Document.document_hash == hashed_content).first()
+#         # 2) Compute hash and check for duplicates in the DB
+#         logger.info("==================== STARTING HASHING PDF =======================")
+#         hashed_content = hash_pdf(saved_path)
+#         existing_file = db.query(Document).filter(Document.document_hash == hashed_content).first()
         
-        if existing_file:
-            logger.warning("================================ PDF ALREADY EXISTs ===============================")
-            # Clean up the file we just saved to avoid redundant disk usage
-            if saved_path.exists():
-                saved_path.unlink()
+#         if existing_file:
+#             logger.warning("================================ PDF ALREADY EXISTs ===============================")
+#             # Clean up the file we just saved to avoid redundant disk usage
+#             if saved_path.exists():
+#                 saved_path.unlink()
                 
-            return {
-                "status": "Document already exists and is indexed",
-                "document_id": existing_file.id,
-                "chunks_indexed": getattr(existing_file, "chunk_count", 0),  # Falls back safely if not explicitly in your schema
-                "duplicated": True
-            }
+#             return {
+#                 "status": "Document already exists and is indexed",
+#                 "document_id": existing_file.id,
+#                 "chunks_indexed": getattr(existing_file, "chunk_count", 0),  # Falls back safely if not explicitly in your schema
+#                 "duplicated": True
+#             }
 
-        # 3) Process new document if no duplicate is found
-        # Parse PDF
-        json_result = ingest_pdf(file_path=str(saved_path))
-        if not json_result:
-            logger.error(" ======================== THERE IS NO JSON RESULT CREATED =============================")
+#         # 3) Process new document if no duplicate is found
+#         # Parse PDF
+#         json_result = ingest_pdf(file_path=str(saved_path))
+#         if not json_result:
+#             logger.error(" ======================== THERE IS NO JSON RESULT CREATED =============================")
             
         
 
-        # Build LangChain Documents
-        documents = build_documents(json_result, original_filename)
-        if not documents:
-            logger.error("XXXXXXXXXXXXXXXXXXX  COULD NOT SUCCESSFULLY CREATE DOCUMENT OBJECT  XXXXXXXXXXXXXXXXXXXXXX")
-        logger.info("=========================  DOCUMENT OBJECT BUILT SUCCESSFULLY ===========================")
-        # Split into chunks
-        nodes = split_markdown_document(documents)
-        if not nodes:
-            logger.error("==========================   NO CHUNKS WERE CREATED SUCCESSFULLY  ================================")
-            if saved_path.exists():
-                saved_path.unlink()
-            raise HTTPException(
-                status_code=400,
-                detail="No chunks were created from the uploaded document."
-            )
-        logger.info(f" =====================  {len(nodes)} NODES CREATED SUCCESSFULY  ==========================================")
-        # Upsert chunks into vector store
-        upsert_split_documents(
-            markdown_nodes=nodes,
-            user_id=str(current_user.id),
-            source_document=document_id
-        )
-        logger.info("DOCUMENT UPSERTED TO DATABASE SUCCESSFULLY")
-        # 4) Save metadata & hash record to relational DB
-        new_doc = Document(
-            id=document_id,
-            document_hash=hashed_content,
-            user_id=current_user.id
-        )
+#         # Build LangChain Documents
+#         documents = build_documents(json_result, original_filename)
+#         if not documents:
+#             logger.error("XXXXXXXXXXXXXXXXXXX  COULD NOT SUCCESSFULLY CREATE DOCUMENT OBJECT  XXXXXXXXXXXXXXXXXXXXXX")
+#         logger.info("=========================  DOCUMENT OBJECT BUILT SUCCESSFULLY ===========================")
+#         # Split into chunks
+#         nodes = split_markdown_document(documents)
+#         if not nodes:
+#             logger.error("==========================   NO CHUNKS WERE CREATED SUCCESSFULLY  ================================")
+#             if saved_path.exists():
+#                 saved_path.unlink()
+#             raise HTTPException(
+#                 status_code=400,
+#                 detail="No chunks were created from the uploaded document."
+#             )
+#         logger.info(f" =====================  {len(nodes)} NODES CREATED SUCCESSFULY  ==========================================")
+#         # Upsert chunks into vector store
+#         upsert_split_documents(
+#             markdown_nodes=nodes,
+#             user_id=str(current_user.id),
+#             source_document=document_id
+#         )
+#         logger.info("DOCUMENT UPSERTED TO DATABASE SUCCESSFULLY")
+#         # 4) Save metadata & hash record to relational DB
+#         new_doc = Document(
+#             id=document_id,
+#             document_hash=hashed_content,
+#             user_id=current_user.id
+#         )
         
-        # Handle chunk_count dynamically if it exists on your Document model
-        if hasattr(new_doc, 'chunk_count'):
-            new_doc.chunk_count = len(nodes)
+#         # Handle chunk_count dynamically if it exists on your Document model
+#         if hasattr(new_doc, 'chunk_count'):
+#             new_doc.chunk_count = len(nodes)
             
-        db.add(new_doc)
-        db.commit()
-        logger.info(" ============================   NEW DOCUMENT ADDED TO DATABASE SUCCESSFULLY  =============================")
+#         db.add(new_doc)
+#         db.commit()
+#         logger.info(" ============================   NEW DOCUMENT ADDED TO DATABASE SUCCESSFULLY  =============================")
 
-        return {
-            "status": "Successfully indexed and processed document",
-            "document_id": document_id,
-            "chunks_indexed": len(nodes),
-            "duplicated": False
-        }
+#         return {
+#             "status": "Successfully indexed and processed document",
+#             "document_id": document_id,
+#             "chunks_indexed": len(nodes),
+#             "duplicated": False
+#         }
 
     
+#     except Exception as e:
+#         db.rollback()
+#         logger.error(f"THEREIS AN ERROR {e}")
+#         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+
+
+import logging
+from fastapi import BackgroundTasks
+from databases.database import SessionLocal
+
+logger = logging.getLogger(__name__)
+
+# ── background worker ──────────────────────────────────────────
+def process_document_upload(
+    saved_path: Path,
+    document_id: str,
+    user_id: str,
+    hashed_content: str,
+    original_filename: str,
+):
+    """
+    Runs outside the request/response cycle. Opens its own DB session
+    since the one from Depends(get_db) is closed as soon as /upload returns.
+    """
+    from data_preprocessing.ingest import ingest_pdf, build_documents
+    from data_preprocessing.chunking import split_markdown_document
+    from data_preprocessing.vector_db import upsert_split_documents
+
+    db = SessionLocal()
+    doc_row = db.query(Document).filter(Document.id == document_id).first()
+
+    try:
+        logger.info(f"[{document_id}] starting ingestion")
+        json_result = ingest_pdf(file_path=str(saved_path))
+        if not json_result:
+            raise ValueError("Parser returned no content")
+
+        documents = build_documents(json_result, original_filename)
+        if not documents:
+            raise ValueError("Could not build document objects from parsed content")
+
+        nodes = split_markdown_document(documents)
+        if not nodes:
+            raise ValueError("No chunks were created from the uploaded document")
+
+        upsert_split_documents(
+            markdown_nodes=nodes,
+            user_id=str(user_id),
+            source_document=document_id,
+        )
+
+        doc_row.status = "completed"
+        doc_row.chunk_count = len(nodes)
+        db.commit()
+        logger.info(f"[{document_id}] completed — {len(nodes)} chunks")
+
     except Exception as e:
         db.rollback()
-        logger.error(f"THEREIS AN ERROR {e}")
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+        doc_row = db.query(Document).filter(Document.id == document_id).first()
+        doc_row.status = "failed"
+        doc_row.error_message = str(e)[:500]
+        db.commit()
+        logger.error(f"[{document_id}] failed: {e}")
+
+    finally:
+        db.close()
+        if saved_path.exists():
+            saved_path.unlink()
+
+
+# ── upload endpoint: now returns immediately ───────────────────
+@app.post("/upload")
+async def upload_file(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from databases.utils import hash_pdf
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file name provided.")
+
+    original_filename = file.filename
+    document_id = str(uuid.uuid4())
+    unique_name = f"{current_user.id}_{document_id}_{original_filename}"
+    saved_path = UPLOAD_DIR / unique_name
+
+    with open(saved_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    hashed_content = hash_pdf(saved_path)
+    existing_file = db.query(Document).filter(Document.document_hash == hashed_content).first()
+
+    if existing_file:
+        saved_path.unlink()
+        return {
+            "status": existing_file.status,
+            "document_id": existing_file.id,
+            "chunks_indexed": existing_file.chunk_count or 0,
+            "duplicated": True,
+        }
+
+    new_doc = Document(
+        id=document_id,
+        document_hash=hashed_content,
+        user_id=current_user.id,
+        status="processing",
+    )
+    db.add(new_doc)
+    db.commit()
+
+    background_tasks.add_task(
+        process_document_upload,
+        saved_path,
+        document_id,
+        current_user.id,
+        hashed_content,
+        original_filename,
+    )
+
+    return {
+        "status": "processing",
+        "document_id": document_id,
+        "duplicated": False,
+    }
+
+
+# ── new: poll this from the frontend ───────────────────────────
+@app.get("/documents/{document_id}/status")
+def get_document_status(
+    document_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    doc = (
+        db.query(Document)
+        .filter(Document.id == document_id, Document.user_id == current_user.id)
+        .first()
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    return {
+        "document_id": doc.id,
+        "status": doc.status,
+        "chunks_indexed": doc.chunk_count,
+        "error": doc.error_message,
+    }
 
 
 # # =========================================================

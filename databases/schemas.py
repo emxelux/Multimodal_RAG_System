@@ -38,3 +38,8 @@ class DocumentIn(BaseModel):
     document_id: str
     documment_hash:str
     
+class DocumentStatusOut(BaseModel):
+    document_id: str
+    status: str
+    chunks_indexed: Optional[int] = None
+    error: Optional[str] = None

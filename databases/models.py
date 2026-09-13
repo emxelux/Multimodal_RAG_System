@@ -32,4 +32,7 @@ class Document(Base):
     user_id = Column(UUID, ForeignKey(
         "users.id", ondelete="CASCADE"), nullable=False)
 
-    # owner = relationship("User")
+    # New: lets the frontend poll instead of waiting on the request
+    status = Column(String, nullable=False, server_default='processing')  # processing | completed | failed
+    chunk_count = Column(Integer, nullable=True)
+    error_message = Column(String, nullable=True)

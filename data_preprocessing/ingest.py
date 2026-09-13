@@ -1,10 +1,11 @@
 import os
 from langchain_core.documents import Document
-from loguru import logger
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
 
 from llama_cloud import LlamaCloud
 
