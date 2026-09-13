@@ -14,12 +14,13 @@ if llama_api_key:
     os.environ["LLAMA_API_KEY"] = llama_api_key
 
 def ingest_pdf(file_path:str):
-    logger.info("INGESTING PDF")
+    logger.info("===================== STARTING INGESTING PDF =======================================")
     client = LlamaCloud(api_key=os.getenv("LLAMA_API_KEY"))
     file = client.files.create(
         file = file_path,
         purpose = "parse"
     )
+    logger.info("======================  FILE CREATED SUCCESSFULLY ===========================")
     result = client.parsing.parse(
     file_id=file.id,
     tier="agentic",
@@ -33,14 +34,16 @@ def ingest_pdf(file_path:str):
     },
     expand=["text", "markdown", "items", "images_content_metadata"],
 )
+    logger.info("========================== MARKDOWN RESULT CREATED SUCCESSFULLY ===================================")
     return result.markdown.pages
 
 
 
 def build_documents(ingested_document, source_name):
+    logger.info("================= STARTING BUILDING DOCUMENT =============================")
     documents = []
     if not ingested_document:
-        logger.warning("No ingested document data provided.")
+        logger.warning("====================== No ingested document data provided =========================================")
         return documents
 
     for pages in ingested_document:
@@ -55,6 +58,7 @@ def build_documents(ingested_document, source_name):
                 }
             )
         )
+        logger.info("======================== DOCUMENT BUILDING DONE SUCCESSFULLY ============================")
 
     return documents
 

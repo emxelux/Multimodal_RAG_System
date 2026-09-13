@@ -1,6 +1,6 @@
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-
+import logging
 
 headers_to_split_on = [
     ("#", "Header1"),
@@ -10,6 +10,8 @@ headers_to_split_on = [
 header_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
 
 
+logger = logging.getLogger(__name__)
+
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000,      
     chunk_overlap=100,    
@@ -17,6 +19,7 @@ text_splitter = RecursiveCharacterTextSplitter(
 )
 
 def split_markdown_document(documents: list[Document]):
+    logger.info("=================== STARTING CHUNKING DOCUMENT =========================")
     final_chunks = []
     
     for doc in documents:
@@ -33,5 +36,7 @@ def split_markdown_document(documents: list[Document]):
                     chunk.page_content = f"Context: {header_context}\n\n{chunk.page_content}"
                 
                 final_chunks.append(chunk)
-                
+    if not final_chunks:
+        logger.error("=================== NO CHUNK WERE DETECTED ==========================")
+    logger.info(" ========================= CHUNKS CREATED SUCCESSFULLY  =============================")
     return final_chunks

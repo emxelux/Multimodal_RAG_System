@@ -94,11 +94,11 @@ def upsert_split_documents(markdown_nodes, user_id, source_document):
         chunk.metadata["source"] = source_document
         docs_to_upsert.append(chunk)
 
-    logger.info("ABOUT TO UPSERT DOCUMENT TO VECTOR DATABASE")
+    logger.info("=====================================  ABOUT TO UPSERT DOCUMENT TO VECTOR DATABASE  =============================")
     try:
         vector_store.add_documents(docs_to_upsert)
         logger.info(
-    "INDEXING → user_id=%r | source=%r",
+    " ============================ INDEXING → user_id=%r | source=%r  =================================",
     str(user_id),
     str(source_document)
 )
