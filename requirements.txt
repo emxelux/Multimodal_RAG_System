@@ -43,3 +43,4 @@ llama-index>=0.14.24
 # ── Utilities ─────────────────────────────────────────────────
 loguru>=0.7.0                  # structured logging (replace bare print() calls)
 sentence_transformers
+psutil

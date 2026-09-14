@@ -15,7 +15,6 @@ import sys
 from databases.schemas import QueryIn, DocumentIn
 
 
-
 import os
 
 # # ===== LLM =====
@@ -48,6 +47,9 @@ app = FastAPI(tags=["Main APP"])
 
 os.environ["HF_TOKEN"] = os.getenv("HF_TOKEN")
 
+@app.on_event("startup")
+async def startup_event():
+    log_memory("APPLICATION STARTUP")
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,15 +75,7 @@ CHAT_HISTORY_STORE: Dict[Tuple[str, str], List[Dict[str, str]]] = {}
 # # SAFE FIELD ACCESSOR
 # # =========================================================
 def _field(r: Any, key: str, default: Any = None) -> Any:
-    """
-    Safely pull a field off a retrieval result, regardless of whether
-    `r` is a plain dict, a LangChain-style Document (page_content +
-    metadata), or some other Pydantic/object model.
-
-    This fixes: AttributeError: 'Document' object has no attribute 'get'
-    which happened because retrieve_context()/rerank_results() return
-    Document objects, not dicts, but the endpoint assumed dicts.
-    """
+    
     # 1) Plain dict
     if isinstance(r, dict):
         return r.get(key, default)
@@ -114,9 +108,6 @@ def health_check():
     return {"message": "ChatPDF backend is running"}
 
 
-# # =========================================================
-# # UPLOAD ENDPOINT
-# # =========================================================
 from databases.database import get_db
 from sqlalchemy.orm import Session
 from databases.oauth2 import get_current_user
@@ -253,10 +244,7 @@ def process_document_upload(
     hashed_content: str,
     original_filename: str,
 ):
-    """
-    Runs outside the request/response cycle. Opens its own DB session
-    since the one from Depends(get_db) is closed as soon as /upload returns.
-    """
+    
     from data_preprocessing.ingest import ingest_pdf, build_documents
     from data_preprocessing.chunking import split_markdown_document
     from data_preprocessing.vector_db import upsert_split_documents
@@ -266,23 +254,30 @@ def process_document_upload(
 
     try:
         logger.info(f"[{document_id}] starting ingestion")
+        log_memory("----------------------- BEFORE STARTING INGESTION -------------------------------")
         json_result = ingest_pdf(file_path=str(saved_path))
         if not json_result:
             raise ValueError("Parser returned no content")
 
+        log_memory("---------------------------- BEFORE BUILDING DOCUMENTS ---------------------------")
         documents = build_documents(json_result, original_filename)
+        log_memory("---------------------------- AFTER BUILDING DOCUMENTS ---------------------------")
         if not documents:
             raise ValueError("Could not build document objects from parsed content")
-
+        log_memory("---------------------- BEFORE SPLITTING DOCUMENTS -----------------------")
         nodes = split_markdown_document(documents)
+        log_memory("------------------------ AFTER SPLITTING DOCUMENTS -------------------------")
         if not nodes:
             raise ValueError("No chunks were created from the uploaded document")
 
+
+        log_memory(" ------------------------- BEFORE UPSERTING TO VECTORDB -------------------------")
         upsert_split_documents(
             markdown_nodes=nodes,
             user_id=str(user_id),
             source_document=document_id,
         )
+        log_memory("---------------------------- AFTER UPSERTING TO VECTORDB --------------------------------")
 
         doc_row.status = "completed"
         doc_row.chunk_count = len(nodes)
@@ -303,6 +298,15 @@ def process_document_upload(
             saved_path.unlink()
 
 
+import os
+import psutil
+
+process = psutil.Process(os.getpid())
+
+def log_memory(stage: str):
+    memory_mb = process.memory_info().rss / (1024 * 1024)
+    logger.info(f"[MEMORY] {stage}: {memory_mb:.2f} MB")
+
 # ── upload endpoint: now returns immediately ───────────────────
 @app.post("/upload")
 async def upload_file(
@@ -311,8 +315,9 @@ async def upload_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    logger.info("============= GETTING INGESTION AND PROCESSING STARTED ======================")
     from databases.utils import hash_pdf
-
+    log_memory("--------------------------------------- DURING FILE UPLOAD ------------------------")
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file name provided.")
 
@@ -325,9 +330,12 @@ async def upload_file(
         shutil.copyfileobj(file.file, buffer)
 
     hashed_content = hash_pdf(saved_path)
+    log_memory("------------------------ DURING CONTENT HASHING -------------------------------------------")
     existing_file = db.query(Document).filter(Document.document_hash == hashed_content).first()
 
     if existing_file:
+        log_memory("----------------------------------------------- DURING QUERYING DATABASE FOR DUPLICATE DOCUMENT  ----------------------------")
+        logger.warning("=============================== UPLOADED FILE ALREADY EXISTS ==========================")
         saved_path.unlink()
         return {
             "status": existing_file.status,
@@ -344,6 +352,7 @@ async def upload_file(
     )
     db.add(new_doc)
     db.commit()
+    logger.info("============================ ADDED DOCUMENT TO DATABASE SUCCESSFULLY ======================================")
 
     background_tasks.add_task(
         process_document_upload,

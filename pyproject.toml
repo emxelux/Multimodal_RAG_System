@@ -60,4 +60,5 @@ dependencies = [
     "llama-index>=0.14.24",
     "datasets>=5.0.0",
     "ipykernel>=7.3.0",
+    "psutil>=7.2.2",
 ]
