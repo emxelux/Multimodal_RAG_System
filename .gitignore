@@ -22,3 +22,4 @@ uploads/
 app.log
 testing_vectordb.py
 logs/
+evaluation/Documents/
