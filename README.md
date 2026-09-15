@@ -1,15 +1,7 @@
----
-title: ChatPDF
-emoji: 📄
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-pinned: false
----
 
 # ChatPDF
 
-A multimodal RAG application for interacting with PDF documents using AI.
+A multimodal RAG application for interacting with your Class PDF  course documents using to help student make studying much more easier.
 
 
 
