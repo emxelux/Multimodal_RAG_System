@@ -1,7 +1,7 @@
 import uuid
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any
 from app.routes import login, users
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -67,9 +67,6 @@ app.include_router(users.router)
 # Directory to save uploaded files
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
-
-CHAT_HISTORY_STORE: Dict[Tuple[str, str], List[Dict[str, str]]] = {}
-
 
 # # =========================================================
 # # SAFE FIELD ACCESSOR
@@ -254,24 +251,24 @@ def process_document_upload(
 
     try:
         logger.info(f"[{document_id}] starting ingestion")
-        log_memory("----------------------- BEFORE STARTING INGESTION -------------------------------")
+        # log_memory("----------------------- BEFORE STARTING INGESTION -------------------------------")
         json_result = ingest_pdf(file_path=str(saved_path))
         if not json_result:
             raise ValueError("Parser returned no content")
 
-        log_memory("---------------------------- BEFORE BUILDING DOCUMENTS ---------------------------")
+        # log_memory("---------------------------- BEFORE BUILDING DOCUMENTS ---------------------------")
         documents = build_documents(json_result, original_filename)
-        log_memory("---------------------------- AFTER BUILDING DOCUMENTS ---------------------------")
+        # log_memory("---------------------------- AFTER BUILDING DOCUMENTS ---------------------------")
         if not documents:
             raise ValueError("Could not build document objects from parsed content")
-        log_memory("---------------------- BEFORE SPLITTING DOCUMENTS -----------------------")
+        # log_memory("---------------------- BEFORE SPLITTING DOCUMENTS -----------------------")
         nodes = split_markdown_document(documents)
-        log_memory("------------------------ AFTER SPLITTING DOCUMENTS -------------------------")
+        # log_memory("------------------------ AFTER SPLITTING DOCUMENTS -------------------------")
         if not nodes:
             raise ValueError("No chunks were created from the uploaded document")
 
 
-        log_memory(" ------------------------- BEFORE UPSERTING TO VECTORDB -------------------------")
+        # log_memory(" ------------------------- BEFORE UPSERTING TO VECTORDB -------------------------")
         upsert_split_documents(
             markdown_nodes=nodes,
             user_id=str(user_id),
@@ -317,7 +314,7 @@ async def upload_file(
 ):
     logger.info("============= GETTING INGESTION AND PROCESSING STARTED ======================")
     from databases.utils import hash_pdf
-    log_memory("--------------------------------------- DURING FILE UPLOAD ------------------------")
+    # log_memory("--------------------------------------- DURING FILE UPLOAD ------------------------")
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file name provided.")
 
@@ -327,14 +324,15 @@ async def upload_file(
     saved_path = UPLOAD_DIR / unique_name
 
     with open(saved_path, "wb") as buffer:
+        # log_memory("--------------------------------------- DURING FILE UPLOAD ------------------------")
         shutil.copyfileobj(file.file, buffer)
 
     hashed_content = hash_pdf(saved_path)
-    log_memory("------------------------ DURING CONTENT HASHING -------------------------------------------")
+    # log_memory("------------------------ DURING CONTENT HASHING -------------------------------------------")
     existing_file = db.query(Document).filter(Document.document_hash == hashed_content).first()
 
     if existing_file:
-        log_memory("----------------------------------------------- DURING QUERYING DATABASE FOR DUPLICATE DOCUMENT  ----------------------------")
+        # log_memory("----------------------------------------------- DURING QUERYING DATABASE FOR DUPLICATE DOCUMENT  ----------------------------")
         logger.warning("=============================== UPLOADED FILE ALREADY EXISTS ==========================")
         saved_path.unlink()
         return {
@@ -434,26 +432,14 @@ def retrieval_and_generation(
         for i, r in enumerate(final_context)
     ]
 
-    history_key = (str(current_user.id), question.document_id)
-    prior_history = question.history or CHAT_HISTORY_STORE.get(history_key, [])
-
     def event_stream():
         yield f"data: {json.dumps({'type': 'citations', 'citations': citations, 'results_count': len(final_context)})}\n\n"
 
-        response_parts: List[str] = []
         for token in stream_generation(
             query=question.query,
             doc_context=doc_context,
-            history=prior_history,
         ):
-            response_parts.append(token)
             yield f"data: {json.dumps({'type': 'token', 'token': token})}\n\n"
-
-        assistant_reply = "".join(response_parts)
-        updated_history = list(prior_history)
-        updated_history.append({"role": "user", "content": question.query})
-        updated_history.append({"role": "assistant", "content": assistant_reply})
-        CHAT_HISTORY_STORE[history_key] = updated_history
 
         yield "data: [DONE]\n\n"
 

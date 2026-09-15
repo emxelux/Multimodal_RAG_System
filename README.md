@@ -420,7 +420,6 @@ The local Qdrant instance uses SQLite as its storage backend. SQLite has a singl
 - [ ] **Streaming responses** — `StreamingResponse` + SSE so answers appear token by token
 - [ ] **Document persistence** — write to `documents` table on upload; add `GET /documents/` so the frontend can restore state without localStorage
 - [ ] **Background ingestion** — `BackgroundTasks` for upload processing so the endpoint returns immediately
-- [ ] **Conversation history** — pass prior turns to the LLM for true multi-turn dialogue
 - [ ] **RAGAS evaluation** — measure `faithfulness`, `answer_relevancy`, and `context_precision` automatically on each response
 - [ ] **Qdrant Cloud migration** — unlock multi-worker and containerised horizontal scaling
 - [ ] **Multi-document querying** — query across all of a user's indexed documents simultaneously

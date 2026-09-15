@@ -4,9 +4,6 @@ import os
 from functools import lru_cache
 from dotenv import load_dotenv
 
-
-# from sentence_transformers import SentenceTransformer
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_qdrant import QdrantVectorStore, RetrievalMode, FastEmbedSparse
 from langchain_cohere import CohereRerank
 import logging

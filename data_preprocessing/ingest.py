@@ -3,6 +3,17 @@ from langchain_core.documents import Document
 import logging
 from dotenv import load_dotenv
 
+
+import os
+import psutil
+
+process = psutil.Process(os.getpid())
+
+def log_memory(stage: str):
+    memory_mb = process.memory_info().rss / (1024 * 1024)
+    logger.info(f"[MEMORY] {stage}: {memory_mb:.2f} MB")
+
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -16,25 +27,29 @@ if llama_api_key:
 
 def ingest_pdf(file_path:str):
     logger.info("===================== STARTING INGESTING PDF =======================================")
+
+    log_memory(">>>>>>>>>>>>>>>>>>>>>>>>> Before llama cloud api <<<<<<<<<<<<<<<<<<<<<<<")
     client = LlamaCloud(api_key=os.getenv("LLAMA_API_KEY"))
+    log_memory(">>>>>>>>>>>>>>>>>>>>>>>>> Before creating file <<<<<<<<<<<<<<<<<<<<<<<")
     file = client.files.create(
         file = file_path,
         purpose = "parse"
     )
+    log_memory(">>>>>>>>>>>>>>>>>>>>>>>>> After Creating file <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
     logger.info("======================  FILE CREATED SUCCESSFULLY ===========================")
+    log_memory(">>>>>>>>>>>>>>>>>>>>>>>>>>>> Before Parsing <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
     result = client.parsing.parse(
     file_id=file.id,
     tier="agentic",
     version="latest",
     output_options={
         "markdown": {"tables": {"output_tables_as_markdown": True}},
-        "images_to_save": ["screenshot"],
     },
     processing_options={
         "ocr_parameters": {"languages": ["en"]},
     },
-    expand=["text", "markdown", "items", "images_content_metadata"],
 )
+    log_memory(">>>>>>>>>>>>>>>>>>>>>>> After Parsing <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
     logger.info("========================== MARKDOWN RESULT CREATED SUCCESSFULLY ===================================")
     return result.markdown.pages
 
