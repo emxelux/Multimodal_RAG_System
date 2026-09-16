@@ -228,10 +228,12 @@ from databases.models import User, Document
 
 
 import logging
+import threading
 from fastapi import BackgroundTasks
 from databases.database import SessionLocal
 
 logger = logging.getLogger(__name__)
+ingestion_lock = threading.Semaphore(1)
 
 # ── background worker ──────────────────────────────────────────
 def process_document_upload(
@@ -243,43 +245,60 @@ def process_document_upload(
 ):
     
     from data_preprocessing.ingest import ingest_pdf, build_documents
-    from data_preprocessing.chunking import split_markdown_document
-    from data_preprocessing.vector_db import upsert_split_documents
 
     db = SessionLocal()
     doc_row = db.query(Document).filter(Document.id == document_id).first()
+    ingestion_acquired = False
 
     try:
+        ingestion_lock.acquire()
+        ingestion_acquired = True
         logger.info(f"[{document_id}] starting ingestion")
-        # log_memory("----------------------- BEFORE STARTING INGESTION -------------------------------")
         json_result = ingest_pdf(file_path=str(saved_path))
         if not json_result:
             raise ValueError("Parser returned no content")
 
-        # log_memory("---------------------------- BEFORE BUILDING DOCUMENTS ---------------------------")
-        documents = build_documents(json_result, original_filename)
-        # log_memory("---------------------------- AFTER BUILDING DOCUMENTS ---------------------------")
-        if not documents:
-            raise ValueError("Could not build document objects from parsed content")
-        # log_memory("---------------------- BEFORE SPLITTING DOCUMENTS -----------------------")
-        nodes = split_markdown_document(documents)
-        # log_memory("------------------------ AFTER SPLITTING DOCUMENTS -------------------------")
-        if not nodes:
+        from data_preprocessing.chunking import split_markdown_document
+        from data_preprocessing.vector_db import upsert_split_documents
+
+        total_chunks = 0
+        batch_size = 64
+        pending_nodes = []
+
+        for page in json_result:
+            documents = build_documents([page], original_filename)
+            for node in split_markdown_document(documents):
+                pending_nodes.append(node)
+                if len(pending_nodes) >= batch_size:
+                    upsert_split_documents(
+                        markdown_nodes=pending_nodes,
+                        user_id=str(user_id),
+                        source_document=document_id,
+                    )
+                    total_chunks += len(pending_nodes)
+                    pending_nodes.clear()
+
+            documents.clear()
+            if hasattr(page, "markdown"):
+                page.markdown = ""
+
+        if pending_nodes:
+            upsert_split_documents(
+                markdown_nodes=pending_nodes,
+                user_id=str(user_id),
+                source_document=document_id,
+            )
+            total_chunks += len(pending_nodes)
+
+        if total_chunks == 0:
             raise ValueError("No chunks were created from the uploaded document")
 
-
-        # log_memory(" ------------------------- BEFORE UPSERTING TO VECTORDB -------------------------")
-        upsert_split_documents(
-            markdown_nodes=nodes,
-            user_id=str(user_id),
-            source_document=document_id,
-        )
         log_memory("---------------------------- AFTER UPSERTING TO VECTORDB --------------------------------")
 
         doc_row.status = "completed"
-        doc_row.chunk_count = len(nodes)
+        doc_row.chunk_count = total_chunks
         db.commit()
-        logger.info(f"[{document_id}] completed — {len(nodes)} chunks")
+        logger.info(f"[{document_id}] completed — {total_chunks} chunks")
 
     except Exception as e:
         db.rollback()
@@ -290,6 +309,8 @@ def process_document_upload(
         logger.error(f"[{document_id}] failed: {e}")
 
     finally:
+        if ingestion_acquired:
+            ingestion_lock.release()
         db.close()
         if saved_path.exists():
             saved_path.unlink()

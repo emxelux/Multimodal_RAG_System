@@ -42,6 +42,7 @@ def ingest_pdf(file_path:str):
     file_id=file.id,
     tier="agentic",
     version="latest",
+    expand=["markdown"],
     output_options={
         "markdown": {"tables": {"output_tables_as_markdown": True}},
     },
