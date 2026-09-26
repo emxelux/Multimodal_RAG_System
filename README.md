@@ -391,7 +391,7 @@ Multimodal_RAG_System/
 
 ## 🧠 Design Decisions
 
-These are the questions a technical interviewer will ask. Here are the answers.
+Here are the answers to the questions about some of my decisions in this project
 
 **Why hybrid search instead of pure vector search?**
 
@@ -403,7 +403,7 @@ Bi-encoders (like the Gemini embedding model) encode the query and document inde
 
 **Why LlamaParse over PyPDF2 or pdfplumber?**
 
-PDF is a page-description format, not a document format. Native PDF parsers extract text character by character and lose table structure, column layout, and reading order. LlamaParse uses a vision-language model to understand document layout, extracting tables as proper Markdown tables and preserving section hierarchy. This dramatically improves chunk quality, which is the most important variable in RAG performance.
+I used PyMUPDF at first but it lose document structure along the way, So i switched to Llama because LlamaParse uses a vision-language model to understand document layout, extracting tables as proper Markdown tables and preserving section hierarchy. This dramatically improves chunk quality, which is the most important variable in project performance.
 
 **Why Argon2 over bcrypt?**
 
@@ -411,18 +411,18 @@ Both are acceptable. Argon2 won the 2015 Password Hashing Competition and is the
 
 **Why a single Uvicorn worker?**
 
-The local Qdrant instance uses SQLite as its storage backend. SQLite has a single-writer lock that is not safe across multiple OS processes. Using `--workers > 1` would cause each worker to hold a separate `lru_cache` instance and compete for the same file, risking data corruption. The correct path to horizontal scaling is migrating to Qdrant Cloud, at which point multiple workers (or a Kubernetes deployment) become safe and straightforward.
+The local Qdrant instance uses SQLite as its storage backend (for development). SQLite has a single-writer lock that is not safe across multiple OS processes. Using `--workers > 1` would cause each worker to hold a separate `lru_cache` instance and compete for the same file, risking data corruption. The correct path to horizontal scaling is migrating to Qdrant Cloud, at which point multiple workers (or a Kubernetes deployment) become safe and straightforward.
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] **Streaming responses** — `StreamingResponse` + SSE so answers appear token by token
+- [ ] **Streaming responses** — `StreamingResponse` + SSE so answers appear token by token. User's don't have to wait for the model to completely generate response before they see the answer.
 - [ ] **Document persistence** — write to `documents` table on upload; add `GET /documents/` so the frontend can restore state without localStorage
 - [ ] **Background ingestion** — `BackgroundTasks` for upload processing so the endpoint returns immediately
-- [ ] **RAGAS evaluation** — measure `faithfulness`, `answer_relevancy`, and `context_precision` automatically on each response
-- [ ] **Qdrant Cloud migration** — unlock multi-worker and containerised horizontal scaling
-- [ ] **Multi-document querying** — query across all of a user's indexed documents simultaneously
+<!-- - [ ] **RAGAS evaluation** — measure `faithfulness`, `answer_relevancy`, and `context_precision` automatically on each response -->
+- [ ] **Qdrant Cloud migration** — unlock multi-worker and containerized horizontal scaling
+<!-- - [ ] **Multi-document querying** — query across all of a user's indexed documents simultaneously -->
 - [ ] **Document deduplication** — hash-based detection of re-uploads using the existing `document_hash` column
 
 ---
@@ -437,9 +437,6 @@ Building production-grade AI systems with a focus on retrieval quality, system d
 
 ---
 
-## 📄 License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
