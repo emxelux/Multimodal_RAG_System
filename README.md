@@ -1,7 +1,7 @@
 
-# ChatPDF
+# DocuMind
 
-A multimodal RAG application for interacting with your Class PDF  course documents using to help student make studying much more easier.
+A multimodal RAG application for interacting with your course PDF  course documents using to help student make studying much more easier.
 
 
 
@@ -41,9 +41,9 @@ A multimodal RAG application for interacting with your Class PDF  course documen
 
 ---
 
-## What is ChatPDF Pro?
+## What is DocuMind?
 
-ChatPDF Pro is a **multimodal Retrieval-Augmented Generation (RAG) system** that lets authenticated users upload PDF documents and ask natural-language questions about their content — with accurate, cited, hallucination-resistant answers.
+Documind is a **multimodal Retrieval-Augmented Generation (RAG) system** that lets authenticated users upload PDF documents and ask natural-language questions about their content — with accurate, cited, hallucination-resistant answers.
 
 Unlike most RAG tutorials that chain together a text splitter and an embedding model, this system implements a **two-stage hybrid retrieval pipeline** that mirrors the architecture used by production AI search systems:
 
@@ -346,7 +346,7 @@ Runs the full hybrid-retrieval + reranking + generation pipeline against a speci
 ### `GET /` — Health Check
 
 ```json
-{ "message": "ChatPDF backend is running" }
+{ "message": "Documind backend is running" }
 ```
 
 ---
